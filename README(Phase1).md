@@ -1,8 +1,8 @@
-# GigShield
+# RiderShield Phase 1 Complete
 
 AI-Powered Parametric Insurance Platform for India's Gig Delivery Workers
 
-GigShield protects food delivery partners (Zomato, Swiggy) from income loss caused by external disruptions like extreme weather, floods, pollution, and curfews. When a disruption hits, workers get paid automatically. No forms. No calls. No waiting.
+RiderShield protects food delivery partners (Zomato, Swiggy) from income loss caused by external disruptions like extreme weather, floods, pollution, and curfews. When a disruption hits, workers get paid automatically. No forms. No calls. No waiting.
 
 ---
 
@@ -10,7 +10,7 @@ GigShield protects food delivery partners (Zomato, Swiggy) from income loss caus
 
 India has over 10 million gig delivery workers. When extreme rain, floods, curfews, or pollution hit their zone, they cannot work. They lose 20 to 30 percent of their monthly income with zero protection. No insurance product exists for them today.
 
-GigShield fixes this.
+RiderShield fixes this.
 
 ---
 
@@ -30,22 +30,22 @@ We focus exclusively on Food Delivery Partners working on Zomato and Swiggy in I
 
 ### Real Scenario
 
-Rahul is a Swiggy delivery partner in Noida. On a Tuesday afternoon, the IMD issues a heavy rain alert. Rainfall crosses 50mm in 3 hours. Rahul cannot ride. GigShield detects this automatically, verifies Rahul was online and in the affected zone via HyperTrack, and credits Rs. 320 to his UPI account within minutes. Rahul did nothing except open the app in the morning.
+Rahul is a Swiggy delivery partner in Noida. On a Tuesday afternoon, the IMD issues a heavy rain alert. Rainfall crosses 50mm in 3 hours. Rahul cannot ride. RiderShield detects this automatically, verifies Rahul was online and in the affected zone via HyperTrack, and credits Rs. 320 to his UPI account within minutes. Rahul did nothing except open the app in the morning.
 
 ---
 
 ## Complete Application Flow
 
-This is the end to end journey every worker goes through on GigShield.
+This is the end to end journey every worker goes through on RiderShield.
 
 ---
 
 ### Step 1: Sign Up and Sign In (Bank Level Security)
 
-The authentication process in GigShield follows the same strict standards used by Indian banking apps. This is the first line of defense against fraud.
+The authentication process in RiderShield follows the same strict standards used by Indian banking apps. This is the first line of defense against fraud.
 
 ```
-Worker downloads GigShield app
+Worker downloads RiderShield app
      
 Bank level security checks run immediately:
 Developer mode detection: app blocks if phone is in developer mode
@@ -62,7 +62,7 @@ Device binding: account is locked to this one device
 If login attempted from new device: full re-verification required
 ```
 
-This level of security ensures that fake accounts, emulated devices, and compromised phones cannot access GigShield from the very first step.
+This level of security ensures that fake accounts, emulated devices, and compromised phones cannot access RiderShield from the very first step.
 
 ---
 
@@ -165,7 +165,7 @@ Base premiums are adjusted up or down by the ML model based on inputs. A worker 
 
 ### Step 5: Dynamic ML Payout Model
 
-This is the core of GigShield. We do not use fixed payout amounts. The ML model is trained on multiple real world disruption scenarios and calculates the right payout amount for each worker automatically.
+This is the core of RiderShield. We do not use fixed payout amounts. The ML model is trained on multiple real world disruption scenarios and calculates the right payout amount for each worker automatically.
 
 #### How the Model is Trained
 
@@ -241,7 +241,7 @@ The ML model refines this formula continuously as more real world claim data com
 
 ### Step 6: 24/7 Monitoring
 
-Once a worker has an active policy, GigShield monitors their zone and activity around the clock.
+Once a worker has an active policy, RiderShield monitors their zone and activity around the clock.
 
 #### Environment Monitoring via APIs
 
@@ -303,7 +303,7 @@ HyperTrack shows movement and activity before event
 Check 3: Did worker's activity drop after disruption?
 HyperTrack shows worker became stationary or exited zone
 
-Check 4: Was worker's shift active on GigShield?
+Check 4: Was worker's shift active on RiderShield?
 Worker must have started shift on app
 
 All checks passed: Claim triggered automatically
@@ -415,7 +415,7 @@ Over 90 percent of budget Android phones sold in India include fingerprint senso
 
 ## Hindi Language Support
 
-GigShield launches with full Hindi language support. All screens, buttons, policy terms, notifications, and claim updates are available in simple Hindi. This removes the single biggest adoption barrier for gig insurance in North India.
+RiderShield launches with full Hindi language support. All screens, buttons, policy terms, notifications, and claim updates are available in simple Hindi. This removes the single biggest adoption barrier for gig insurance in North India.
 
 Future phases will add Tamil, Telugu, Kannada, and Bengali.
 
@@ -555,7 +555,7 @@ Advanced fraud detection, Razorpay sandbox instant payouts, full dual dashboard 
 
 ## What We Are Not Building
 
-GigShield strictly excludes the following:
+RiderShield strictly excludes the following:
 
 - Health insurance
 - Accident or injury claims
@@ -568,6 +568,6 @@ GigShield strictly excludes the following:
 
 ## Repository
 
-GitHub: https://github.com/aadiexii/GigShield
+GitHub: https://github.com/aadiexii/RIDERSHIELD
 
 This repository will be used across all three phases of Guidewire DEVTrails 2026.
