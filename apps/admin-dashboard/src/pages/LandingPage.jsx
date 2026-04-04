@@ -454,7 +454,7 @@ export default function LandingPage() {
             </div>
 
             <h1 className="text-5xl lg:text-[68px] leading-[1.08] font-headline font-extrabold text-white tracking-tight">
-              When Rain Stops You,<br />
+              When The City Stops You,<br />
               We Make Sure Your<br />
               <span className="text-orange-500">Income Doesn&apos;t</span>
             </h1>
