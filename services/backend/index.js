@@ -19,10 +19,7 @@ const mlServiceUrl = process.env.ML_SERVICE_URL || 'http://localhost:8000'
 const JWT_SECRET   = process.env.JWT_SECRET     || 'ridershield_fallback_secret'
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'ridershield-guidewire'
 
-app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:8081', 'http://localhost:19006', 'exp://localhost:8081'],
-  credentials: true,
-}))
+app.use(cors())
 app.use(express.json())
 
 // GET /health
