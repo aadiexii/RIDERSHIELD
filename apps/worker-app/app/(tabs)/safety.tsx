@@ -4,6 +4,8 @@ import {
   StyleSheet, StatusBar, SafeAreaView,
 } from 'react-native';
 import { Shield, AlertTriangle, Check, MapPin, Users, Radio } from 'lucide-react-native';
+import * as Location from 'expo-location';
+import { useAuth } from '../../context/AuthContext';
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.119:5000'; // Real device or live deployed
 // const BACKEND_URL = 'http://10.0.2.2:5000'; // Android emulator
@@ -29,6 +31,7 @@ const STEPS = [
 ];
 
 export default function SafetyScreen() {
+  const { workerId } = useAuth();
   const [isActivated, setIsActivated] = useState(false);
   const [steps, setSteps] = useState(STEPS.map(s => ({ ...s, done: false })));
   const [result, setResult] = useState<'approved' | 'rejected' | null>(null);
@@ -46,13 +49,27 @@ export default function SafetyScreen() {
       }, 1200 * (index + 1));
     });
 
-    // After all steps complete, call backend
+    // After all steps complete, call backend with real GPS
     setTimeout(async () => {
+      let gpsCoords = null;
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          gpsCoords = { lat: loc.coords.latitude, lon: loc.coords.longitude };
+        }
+      } catch { /* GPS optional */ }
+
       try {
         const res = await fetch(`${BACKEND_URL}/worker/safety-mode`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ zoneId: 'Z001', zoneName: 'Noida Sector 18', workerId: 'W-4821' }),
+          body: JSON.stringify({
+            zoneId:   'Z001',
+            zoneName: 'Noida Sector 18',
+            workerId: workerId,
+            gpsCoords,                     // real device GPS
+          }),
         });
         const data = await res.json();
         const approvalChance = data.groupValidated ? 0.95 : 0.75;
@@ -60,7 +77,6 @@ export default function SafetyScreen() {
         setResult(approved ? 'approved' : 'rejected');
         if (data.groupCount > 0) setGroupCount(data.groupCount);
       } catch {
-        // Fallback if backend unreachable
         const approved = Math.random() > 0.2;
         setResult(approved ? 'approved' : 'rejected');
       }

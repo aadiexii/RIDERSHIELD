@@ -1,26 +1,24 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import Navbar from './components/Navbar';
-import LandingPage from './pages/LandingPage';
+import Sidebar from './components/Sidebar';
 import AdminDashboard from './pages/AdminDashboard';
+import SimulationPage from './pages/SimulationPage';
 import AdminLogin from './pages/AdminLogin';
 import Claims from './pages/Claims';
 import Analytics from './pages/Analytics';
-import WorkerDashboard from './pages/WorkerDashboard';
+import Workers from './pages/Workers';
+import ZoneMapPage from './pages/ZoneMapPage';
 import DocsPage from './pages/DocsPage';
-import InsurancePage from './pages/InsurancePage';
 import { LanguageProvider } from './context/LanguageContext';
 
-// ─── Protected route: redirects to login if no token ─────────────────────────
+
+// ─── Protected route ───────────────────────────────────────────────────────────
 const ProtectedRoute = ({ children }) => {
   const [isValid, setIsValid] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem('ridershield_admin_token');
-    if (!token) {
-      setIsValid(false);
-      return;
-    }
+    if (!token) { setIsValid(false); return; }
 
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
     fetch(`${API_URL}/auth/admin/verify`, {
@@ -34,17 +32,14 @@ const ProtectedRoute = ({ children }) => {
           setIsValid(false);
         }
       })
-      .catch((err) => {
-        console.error('Session verification failed:', err);
-        setIsValid(false);
-      });
+      .catch(() => setIsValid(false));
   }, []);
 
   if (isValid === null) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="flex gap-1 items-center justify-center">
+          <div className="flex gap-1">
             <span className="w-2 h-2 rounded-full bg-orange-500 animate-bounce" />
             <span className="w-2 h-2 rounded-full bg-orange-500 animate-bounce [animation-delay:0.15s]" />
             <span className="w-2 h-2 rounded-full bg-orange-500 animate-bounce [animation-delay:0.3s]" />
@@ -55,32 +50,48 @@ const ProtectedRoute = ({ children }) => {
     );
   }
 
-  if (isValid === false) return <Navigate to="/admin/login" replace />;
-  
+  if (isValid === false) return <Navigate to="/login" replace />;
   return children;
 };
 
-// ─── App shell with Navbar + Routes ──────────────────────────────────────────
+// ─── Admin shell — Sidebar only shown on authenticated pages ───────────────────
 function AppShell() {
-  return (
-    <div className="min-h-screen bg-[#0a0a0a] font-sans">
-      <Navbar />
-      <Routes>
-        {/* Public */}
-        <Route path="/"            element={<LandingPage />}       />
-        <Route path="/admin/login" element={<AdminLogin />}        />
-        <Route path="/worker"      element={<WorkerDashboard />}   />
-        <Route path="/docs"        element={<DocsPage />}          />
-        <Route path="/insurance"   element={<InsurancePage />}     />
+  const location = useLocation();
+  const isLoginPage = location.pathname === '/login';
+  const isDocsPage  = location.pathname === '/docs';
 
-        {/* Protected */}
-        <Route path="/admin"     element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-        <Route path="/claims"    element={<ProtectedRoute><Claims /></ProtectedRoute>}         />
-        <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>}      />
+  // DocsPage manages its own internal 3-column scroll — don't use overflow-y-auto on it
+  const contentCls = isDocsPage
+    ? 'flex-1 flex flex-col relative h-screen overflow-hidden'
+    : 'flex-1 flex flex-col relative min-h-screen overflow-y-auto overflow-x-hidden';
+
+  return (
+    <div className="flex h-screen bg-[#0a0a0a] font-sans overflow-hidden">
+      {!isLoginPage && <Sidebar />}
+      
+      <div className={contentCls}>
+        <Routes>
+        {/* Root → redirect to login */}
+        <Route path="/"       element={<Navigate to="/login" replace />} />
+        <Route path="/login"  element={<AdminLogin />} />
+
+        {/* Protected admin routes */}
+        <Route path="/dashboard"  element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/simulation" element={<ProtectedRoute><SimulationPage /></ProtectedRoute>} />
+        <Route path="/claims"     element={<ProtectedRoute><Claims /></ProtectedRoute>} />
+        <Route path="/analytics"  element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+        <Route path="/workers"    element={<ProtectedRoute><Workers /></ProtectedRoute>} />
+        <Route path="/zones"      element={<ProtectedRoute><ZoneMapPage /></ProtectedRoute>} />
+        <Route path="/docs"       element={<ProtectedRoute><DocsPage /></ProtectedRoute>} />
+
+        {/* Legacy paths → redirect */}
+        <Route path="/admin"       element={<Navigate to="/dashboard" replace />} />
+        <Route path="/admin/login" element={<Navigate to="/login" replace />} />
 
         {/* Catch-all */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
+      </div>
     </div>
   );
 }

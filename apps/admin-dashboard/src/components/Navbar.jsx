@@ -4,9 +4,11 @@ import { LogOut } from 'lucide-react';
 
 // ─── Page name map for inner navbar ──────────────────────────────────────────
 const PAGE_LABELS = {
-  '/admin':     'Control Center',
+  '/dashboard': 'Control Center',
   '/claims':    'Claims',
   '/analytics': 'Analytics',
+  '/workers':   'Workers',
+  '/zones':     'Zone Map',
   '/docs':      'Documentation',
 };
 
@@ -16,7 +18,7 @@ const ROLE_DOT = {
   analyst:     'bg-green-500',
 };
 
-// ─── Inner admin navbar (shown on /admin, /claims, /analytics, /docs) ────────
+// ─── Inner admin navbar ───────────────────────────────────────────────────────
 function InnerNavbar() {
   const location = useLocation();
   const navigate  = useNavigate();
@@ -32,7 +34,7 @@ function InnerNavbar() {
   const handleLogout = () => {
     localStorage.removeItem('ridershield_admin_token');
     localStorage.removeItem('ridershield_admin');
-    navigate('/admin/login');
+    navigate('/login');
   };
 
   const pageLabel = PAGE_LABELS[location.pathname] || '';
@@ -44,7 +46,7 @@ function InnerNavbar() {
     >
       {/* Left: logo + page name */}
       <div className="flex items-center gap-0">
-        <Link to="/">
+        <Link to="/dashboard">
           <span className="text-white font-bold text-base">RIDER</span>
           <span className="text-orange-500 font-bold text-base">SHIELD</span>
         </Link>
@@ -60,11 +62,12 @@ function InnerNavbar() {
       {admin !== null && (
         <div className="hidden md:flex items-center gap-6">
           {[
-                      { label: 'Dashboard', to: '/admin'     },
+            { label: 'Dashboard', to: '/dashboard' },
             { label: 'Claims',    to: '/claims'    },
             { label: 'Analytics', to: '/analytics' },
+            { label: 'Workers',   to: '/workers'   },
+            { label: 'Zone Map',  to: '/zones'     },
             { label: 'Docs',      to: '/docs'      },
-            { label: 'Insurance', to: '/insurance' },
           ].map(({ label, to }) => (
             <Link
               key={to}
@@ -100,7 +103,7 @@ function InnerNavbar() {
           </>
         ) : (
           <Link
-            to="/admin/login"
+            to="/login"
             className="text-sm border border-white/10 text-zinc-400 hover:text-white hover:border-white/30 px-4 py-2 rounded-lg transition-all"
           >
             Admin Login
@@ -111,84 +114,9 @@ function InnerNavbar() {
   );
 }
 
-// ─── Landing floating pill navbar (shown only on /) ──────────────────────────
-function LandingNavbar() {
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setVisible(window.scrollY > 60);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  const openAuth = () => window.dispatchEvent(new CustomEvent('openAuthModal'));
-
-  return (
-    <>
-      <style>{`
-        @keyframes slideDown {
-          from { opacity: 0; transform: translateY(-100%); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        .navbar-pill { animation: slideDown 0.35s cubic-bezier(0.4,0,0.2,1) forwards; }
-      `}</style>
-
-      {visible && (
-        <div className="fixed top-4 left-0 right-0 z-50 flex justify-center pointer-events-none px-4">
-          <nav
-            className="navbar-pill pointer-events-auto bg-black/85 backdrop-blur-xl border border-white/10 rounded-2xl px-6 py-3 flex items-center gap-8 shadow-2xl"
-            style={{ fontFamily: 'Plus Jakarta Sans, Inter, sans-serif' }}
-          >
-            {/* Logo */}
-            <span className="font-bold text-sm shrink-0">
-              <span className="text-white">RIDER</span>
-              <span className="text-orange-500">SHIELD</span>
-            </span>
-
-            {/* Links */}
-            <div className="hidden sm:flex items-center gap-6 text-sm">
-              {[
-                ['How It Works', '#how-it-works'],
-                ['Features',     '#features'    ],
-                ['Plans',        '#plans'       ],
-                ['Insurance',    '/insurance'   ],
-                ['Docs',         '/docs'        ],
-              ].map(([label, href]) => (
-                <a
-                  key={label}
-                  href={href}
-                  className="text-zinc-400 hover:text-white transition-colors"
-                >
-                  {label}
-                </a>
-              ))}
-            </div>
-
-            {/* CTA */}
-            <button
-              onClick={openAuth}
-              className="shrink-0 bg-zinc-900 border border-white/12 rounded-full px-4 py-1.5 text-sm font-medium text-white hover:bg-zinc-800 transition-colors"
-            >
-              <span className="text-orange-500 font-mono mr-1">&gt;_</span>
-              Get Started
-            </button>
-          </nav>
-        </div>
-      )}
-    </>
-  );
-}
-
-// ─── Root export — picks the right variant ───────────────────────────────────
+// ─── Root export — hide on login, show inner on all other pages ───────────────
 export default function Navbar() {
   const { pathname } = useLocation();
-
-  // Landing page → pill navbar
-  if (pathname === '/') return <LandingNavbar />;
-
-  // Login + worker → no navbar
-  if (pathname === '/admin/login' || pathname === '/worker') return null;
-
-  // All other inner pages → solid inner navbar
+  if (pathname === '/login') return null;
   return <InnerNavbar />;
 }

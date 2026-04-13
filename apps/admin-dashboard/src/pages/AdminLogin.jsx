@@ -61,7 +61,7 @@ export default function AdminLogin() {
       }
       localStorage.setItem('ridershield_admin_token', data.token);
       localStorage.setItem('ridershield_admin', JSON.stringify(data.admin));
-      navigate('/admin');
+      navigate('/dashboard');
     } catch {
       setError('Cannot reach server. Make sure the backend is running on port 5000.');
     } finally {
@@ -88,7 +88,7 @@ export default function AdminLogin() {
       }
       localStorage.setItem('ridershield_admin_token', data.token);
       localStorage.setItem('ridershield_admin', JSON.stringify(data.admin));
-      navigate('/admin');
+      navigate('/dashboard');
     } catch (err) {
       setError(err.message?.includes('popup-closed') ? 'Sign-in cancelled.' : 'Google sign-in failed. Try again.');
     } finally {
@@ -100,11 +100,11 @@ export default function AdminLogin() {
 
   return (
     <div
-      className="min-h-screen bg-[#0a0a0a] flex items-center justify-center"
+      className="min-h-screen bg-[#0a0a0a] flex items-stretch"
       style={{ fontFamily: 'Plus Jakarta Sans, Inter, sans-serif' }}
     >
       {/* ── Left panel ─────────────────────────────────────────────────────── */}
-      <div className="hidden lg:flex w-1/2 flex-col justify-center px-20 h-screen border-r border-white/6">
+      <div className="hidden lg:flex w-1/2 flex-col pt-[10vh] px-20 h-screen border-r border-white/6 sticky top-0">
         <div className="max-w-md">
           <p className="text-[10px] uppercase tracking-widest text-orange-500 font-bold mb-6">
             RiderShield Admin
@@ -131,7 +131,7 @@ export default function AdminLogin() {
       </div>
 
       {/* ── Right panel ────────────────────────────────────────────────────── */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center px-6 py-12">
+      <div className="w-full lg:w-1/2 flex flex-col items-center overflow-y-auto px-6 py-10">
 
         {/* Back to home */}
         <div className="w-full max-w-md mb-4">

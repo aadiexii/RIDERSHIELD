@@ -1,9 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, Animated, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { useAuth } from '../context/AuthContext';
 
 export default function SplashScreen() {
   const barWidth = useRef(new Animated.Value(0)).current;
+  const { workerId, authLoading } = useAuth();
 
   useEffect(() => {
     Animated.timing(barWidth, {
@@ -12,12 +14,17 @@ export default function SplashScreen() {
       useNativeDriver: false,
     }).start();
 
-    const timer = setTimeout(() => {
-      router.replace('/onboarding');
-    }, 2500);
-
-    return () => clearTimeout(timer);
-  }, []);
+    if (!authLoading) {
+      const timer = setTimeout(() => {
+        if (workerId) {
+          router.replace('/(tabs)');
+        } else {
+          router.replace('/onboarding');
+        }
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [authLoading, workerId]);
 
   return (
     <View style={s.container}>

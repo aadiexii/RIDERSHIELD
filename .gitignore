@@ -89,6 +89,10 @@ apps/worker-app/.env
 *.sw?
 .DS_Store
 
+
+*.json
+serviceAccount.json
+
 # Models
 # Note: *.pkl is purposefully NOT ignored below so that Render doesn't have to train models on every deployment if you choose to push them. If you want to keep them local-only and force Render to train on build, uncomment the line below:
 # *.pkl

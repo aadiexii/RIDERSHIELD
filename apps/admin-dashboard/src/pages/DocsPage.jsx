@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ArrowLeft, Check, X, BookOpen, Bike, Building2,
-  ShieldCheck, Zap, BarChart3, Code2, Layers, Lock
+  Check, X, BookOpen, Bike, Building2, FileText,
+  ShieldCheck, Zap, BarChart3, Code2, Layers, Lock,
+  ChevronLeft, ChevronRight, PanelRightClose, PanelRightOpen
 } from 'lucide-react';
 
 
@@ -1357,7 +1358,8 @@ const CONTENT = {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function DocsPage() {
-  const [active, setActive] = useState('Introduction');
+  const [active,  setActive]  = useState('Introduction');
+  const [navOpen, setNavOpen] = useState(true);
   const contentRef = useRef(null);
 
   const handleNav = (id) => {
@@ -1366,53 +1368,12 @@ export default function DocsPage() {
   };
 
   const Content = CONTENT[active] || (() => <Placeholder id={active} />);
-  const pageToc  = TOC[active] || [];
 
   return (
     <div
-      className="flex h-screen bg-[#0a0a0a] overflow-hidden"
+      className="flex h-full bg-[#0a0a0a] overflow-hidden"
       style={{ fontFamily: 'Plus Jakarta Sans, Inter, sans-serif' }}
     >
-      {/* ── LEFT SIDEBAR ──────────────────────────────────────────────────── */}
-      <aside className="w-60 shrink-0 bg-[#0a0a0a] border-r border-white/8 flex flex-col overflow-y-auto">
-        {/* Logo + back */}
-        <div className="px-5 pt-7 pb-5 border-b border-white/6">
-          <Link to="/" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }} className="inline-block mb-4">
-            <span className="text-white font-bold text-lg">RIDER</span>
-            <span className="text-orange-500 font-bold text-lg">SHIELD</span>
-          </Link>
-          <Link to="/" className="flex items-center gap-1.5 text-zinc-500 hover:text-white text-xs transition-colors">
-            <ArrowLeft className="w-3 h-3" /> Back to Home
-          </Link>
-        </div>
-
-        {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-5">
-          {NAV.map(({ section, items }) => (
-            <div key={section}>
-              <p className="text-[10px] uppercase tracking-widest text-zinc-600 font-bold px-2 mb-1.5">{section}</p>
-              {items.map(({ id, label, Icon }) => (
-                <button
-                  key={id}
-                  onClick={() => handleNav(id)}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs transition-colors text-left ${
-                    active === id
-                      ? 'text-orange-400 bg-orange-500/8 font-semibold'
-                      : 'text-zinc-400 hover:text-white hover:bg-white/4'
-                  }`}
-                >
-                  <Icon className={`w-3.5 h-3.5 shrink-0 ${active === id ? 'text-orange-400' : 'text-zinc-600'}`} />
-                  {label}
-                  {active === id && (
-                    <span className="ml-auto w-1 h-4 bg-orange-500 rounded-full" />
-                  )}
-                </button>
-              ))}
-            </div>
-          ))}
-        </nav>
-      </aside>
-
       {/* ── MAIN CONTENT ──────────────────────────────────────────────────── */}
       <main
         ref={contentRef}
@@ -1432,34 +1393,86 @@ export default function DocsPage() {
         </div>
       </main>
 
-      {/* ── RIGHT SIDEBAR: On This Page ───────────────────────────────────── */}
-      <aside className="w-52 shrink-0 border-l border-white/8 overflow-y-auto">
-        <div className="px-5 pt-10 sticky top-0">
-          <p className="text-[10px] uppercase tracking-widest text-zinc-600 font-bold mb-4">On This Page</p>
-          {pageToc.length > 0 ? (
-            <nav className="space-y-2">
-              {pageToc.map((heading, i) => (
-                <a
-                  key={i}
-                  href={`#${heading.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g,'')}`}
-                  className="block text-xs text-zinc-500 hover:text-orange-400 transition-colors py-0.5 border-l-2 border-transparent hover:border-orange-500/40 pl-3"
-                >
-                  {heading}
-                </a>
-              ))}
-            </nav>
-          ) : (
-            <p className="text-zinc-700 text-xs">No headings</p>
-          )}
-
-          {/* Quick links */}
-          <div className="mt-8 pt-6 border-t border-white/6 space-y-2">
-            <p className="text-[10px] uppercase tracking-widest text-zinc-700 font-bold mb-3">More</p>
-            <a href="https://github.com" className="block text-xs text-zinc-600 hover:text-white transition-colors py-0.5">GitHub →</a>
-            <Link to="/admin"     className="block text-xs text-zinc-600 hover:text-white transition-colors py-0.5">Admin Dashboard →</Link>
-            <Link to="/#plans"    className="block text-xs text-zinc-600 hover:text-white transition-colors py-0.5">View Plans →</Link>
+      {/* ── DOC SECTION NAV (collapsible, on right) ───────────────────────── */}
+      <aside className={`shrink-0 border-l border-white/8 overflow-y-auto hidden lg:flex flex-col transition-all duration-300 ${
+        navOpen ? 'w-52' : 'w-12'
+      }`}>
+        {/* Collapsed state toggle button */}
+        {!navOpen && (
+          <div className="flex justify-center pt-5 pb-2">
+            <button
+              onClick={() => setNavOpen(true)}
+              className="group/docs w-10 h-10 flex items-center justify-center hover:bg-white/5 transition-colors cursor-pointer rounded-xl relative"
+              title="Expand documentation menu"
+            >
+              <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-zinc-800/20 border border-white/5 group-hover/docs:opacity-0 transition-opacity duration-200">
+                <FileText className="w-4 h-4 text-zinc-400" />
+              </div>
+              <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-[#1a1a1a] border border-[#333] opacity-0 group-hover/docs:opacity-100 transition-opacity duration-200">
+                <PanelRightOpen className="w-5 h-5 text-white" strokeWidth={1.5} />
+              </div>
+            </button>
           </div>
-        </div>
+        )}
+
+        {/* Nav items — hidden when collapsed */}
+        {navOpen && (
+          <nav className="px-3 pt-5 pb-6 space-y-5">
+            {NAV.map(({ section, items }, idx) => (
+              <div key={section}>
+                {idx === 0 ? (
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[10px] uppercase tracking-widest text-zinc-600 font-bold px-2">{section}</p>
+                    <button
+                      onClick={() => setNavOpen(false)}
+                      title="Collapse sidebar"
+                      className="p-1 rounded-md text-zinc-500 hover:text-white hover:bg-white/8 transition-all mr-1"
+                    >
+                      <PanelRightClose className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-[10px] uppercase tracking-widest text-zinc-600 font-bold px-2 mb-2">{section}</p>
+                )}
+                {items.map(({ id, label, Icon }) => (
+                  <button
+                    key={id}
+                    onClick={() => handleNav(id)}
+                    className={`relative w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all duration-200 text-left group ${
+                      active === id
+                        ? 'bg-orange-500/15 text-orange-400 font-bold'
+                        : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    {active === id && (
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-orange-500 rounded-r-md" />
+                    )}
+                    <Icon className={`w-3.5 h-3.5 shrink-0 ${active === id ? 'text-orange-400' : 'text-zinc-500 group-hover:text-zinc-400'}`} />
+                    <span className="text-xs">{label}</span>
+                  </button>
+                ))}
+              </div>
+            ))}
+          </nav>
+        )}
+
+        {/* When collapsed: show icon-only nav */}
+        {!navOpen && (
+          <nav className="px-1 pb-6 space-y-1">
+            {NAV.flatMap(({ items }) => items).map(({ id, label, Icon }) => (
+              <button
+                key={id}
+                onClick={() => { handleNav(id); setNavOpen(true); }}
+                title={label}
+                className={`w-full flex items-center justify-center p-2 rounded-lg transition-colors ${
+                  active === id ? 'text-orange-400 bg-orange-500/15' : 'text-zinc-600 hover:text-zinc-300 hover:bg-white/5'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+              </button>
+            ))}
+          </nav>
+        )}
       </aside>
     </div>
   );

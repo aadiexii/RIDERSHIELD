@@ -32,6 +32,8 @@ export default function ClaimsPage() {
   const [toastType,     setToastType]     = useState('success');
   const [actionSuccess, setActionSuccess] = useState(null);
   const [flashNew,      setFlashNew]      = useState(false);
+  const [payoutLoading, setPayoutLoading] = useState(false);
+  const [payoutResult,  setPayoutResult]  = useState(null);
   const prevCountRef = useRef(0);
 
   const token = localStorage.getItem('ridershield_admin_token');
@@ -95,6 +97,39 @@ export default function ClaimsPage() {
       }
     } catch {
       showToast('Cannot reach backend — local state updated only.', 'warn');
+    }
+  };
+
+  const processUPIPayout = async (claim) => {
+    setPayoutLoading(true);
+    setPayoutResult(null);
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${API_URL}/payout/upi`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          workerId: claim.worker,
+          upiId:    claim.worker.toLowerCase().replace('-', '') + '@oksbi',
+          amount:   Math.round(claim.payout),
+          claimId:  claim.id,
+          reason:   `RiderShield ${claim.type} disruption payout`,
+        }),
+      });
+      const data = await res.json();
+      setPayoutResult(data);
+      if (data.success) {
+        setClaims(prev => prev.map(c =>
+          (c.claimId === claim.id || c.id === claim.id) ? { ...c, status: 'paid' } : c
+        ));
+        setSelected(prev => prev ? { ...prev, status: 'paid' } : prev);
+        showToast(`Rs. ${Math.round(claim.payout)} payout processed!`);
+      }
+    } catch (err) {
+      console.log('Payout error:', err);
+      showToast('Payout request failed.', 'warn');
+    } finally {
+      setPayoutLoading(false);
     }
   };
 
@@ -393,9 +428,12 @@ export default function ClaimsPage() {
                 </button>
               )}
               {selected.status === 'approved' && (
-                <button onClick={() => updateClaimStatus(selected.id, 'paid')}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-xl transition-colors text-sm">
-                  Mark as Paid
+                <button
+                  onClick={() => processUPIPayout(selected)}
+                  disabled={payoutLoading}
+                  className="w-full bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white font-semibold rounded-xl py-3 transition-all text-sm mt-2"
+                >
+                  {payoutLoading ? 'Processing...' : 'Process UPI Payout'}
                 </button>
               )}
               {selected.status !== 'rejected' && (
@@ -406,6 +444,27 @@ export default function ClaimsPage() {
               )}
               {selected.status === 'rejected' && (
                 <div className="text-center py-2 text-zinc-500 text-xs">Claim has been flagged for review.</div>
+              )}
+
+              {payoutResult && (
+                <div className={`rounded-xl p-4 mt-3 ${
+                  payoutResult.success
+                    ? 'bg-green-500/10 border border-green-500/20'
+                    : 'bg-red-500/10 border border-red-500/20'
+                }`}>
+                  {payoutResult.success ? (
+                    <>
+                      <p className="text-green-400 text-sm font-semibold mb-1">Payout Initiated</p>
+                      <p className="text-orange-400 font-mono text-xs mb-1">{payoutResult.payoutId}</p>
+                      <p className="text-green-400 text-sm">Rs. {payoutResult.amount} sent to {payoutResult.upiId}</p>
+                      {payoutResult.simulated && (
+                        <p className="text-zinc-500 text-xs mt-1">Sandbox simulation — no real transfer</p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-red-400 text-sm">{payoutResult.error || 'Payout failed'}</p>
+                  )}
+                </div>
               )}
             </div>
           </>

@@ -4,20 +4,54 @@ require('dotenv').config()
 const dns = require('dns')
 dns.setServers(['8.8.8.8', '8.8.4.4'])
 
-const express  = require('express')
-const cors     = require('cors')
-const axios    = require('axios')
-const jwt      = require('jsonwebtoken')
-const cron     = require('node-cron')
-const bcrypt   = require('bcryptjs')
-const mongoose = require('mongoose')
-const https    = require('https')
+const express    = require('express')
+const cors       = require('cors')
+const axios      = require('axios')
+const jwt        = require('jsonwebtoken')
+const cron       = require('node-cron')
+const bcrypt     = require('bcryptjs')
+const mongoose   = require('mongoose')
+const https      = require('https')
+const Razorpay   = require('razorpay')
+const admin      = require('firebase-admin')
+
+// ── Firebase Admin SDK (verifies phone auth tokens from worker app) ──────────
+if (!admin.apps.length) {
+  try {
+    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+      admin.initializeApp({
+        credential: admin.credential.applicationDefault(),
+        projectId:  process.env.FIREBASE_PROJECT_ID || 'ridershield-guidewire',
+      })
+    } else {
+      // Fallback: initialize with just projectId (verification will fail gracefully)
+      admin.initializeApp({
+        projectId: process.env.FIREBASE_PROJECT_ID || 'ridershield-guidewire',
+      })
+    }
+    console.log('[Firebase Admin] Initialized for project:', process.env.FIREBASE_PROJECT_ID || 'ridershield-guidewire')
+  } catch (err) {
+    console.log('[Firebase Admin] Init failed:', err.message)
+  }
+}
+
+const razorpay = new Razorpay({
+  key_id:     process.env.RAZORPAY_KEY_ID     || 'rzp_test_placeholder',
+  key_secret: process.env.RAZORPAY_KEY_SECRET || 'placeholder_secret',
+})
 
 const app          = express()
 const port         = process.env.PORT || 5000
 const mlServiceUrl = process.env.ML_SERVICE_URL || 'http://localhost:8000'
 const JWT_SECRET   = process.env.JWT_SECRET     || 'ridershield_fallback_secret'
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'ridershield-guidewire'
+const MSG91_AUTHKEY    = process.env.MSG91_AUTHKEY    || '507995AbhgO7JF7JbV69dad4c7P1'
+const MSG91_TEMPLATE   = process.env.MSG91_TEMPLATE   || ''   // Set after creating OTP template
+const MSG91_SENDER     = process.env.MSG91_SENDER     || 'RIDSHD'
+
+// In-memory OTP store { phone: { otp, expiry, attempts } }
+// Switches to MongoDB OTPRecord model in production
+const OTP_STORE = new Map()
 
 app.use(cors())
 app.use(express.json())
@@ -82,18 +116,43 @@ const adminUserSchema = new mongoose.Schema({
 })
 
 const claimSchema = new mongoose.Schema({
-  claimId:       { type: String, required: true, unique: true },
-  workerId:      String,
-  zone:          String,
-  type:          String,
-  severity:      Number,
-  hours:         Number,
-  payoutAmount:  Number,
-  status:        { type: String, enum: ['triggered', 'approved', 'paid', 'rejected'], default: 'triggered' },
-  confidence:    Number,
-  hypertrackSessionId: { type: String },
-  autoTriggered: { type: Boolean, default: false },
-  timestamp:     { type: Date, default: Date.now },
+  claimId:            { type: String, required: true, unique: true },
+  workerId:           String,
+  zone:               String,
+  type:               String,
+  severity:           Number,
+  hours:              Number,
+  payoutAmount:       Number,
+  status:             { type: String, enum: ['triggered', 'approved', 'paid', 'rejected'], default: 'triggered' },
+  confidence:         Number,
+  hypertrackSessionId:{ type: String },
+  autoTriggered:      { type: Boolean, default: false },
+  razorpayPayoutId:   { type: String },
+  razorpayStatus:     { type: String },
+  paidAt:             { type: String },
+  timestamp:          { type: Date, default: Date.now },
+})
+
+const workerSchema = new mongoose.Schema({
+  workerId:        { type: String, required: true, unique: true },
+  name:            { type: String, required: true },
+  phone:           { type: String },
+  upiId:           { type: String },
+  zone:            { type: String, required: true },
+  city:            { type: String, required: true },
+  plan:            { type: String, enum: ['basic', 'standard', 'premium'], default: 'standard' },
+  weeklyPremium:   { type: Number },
+  earningsBaseline:{ type: Number, default: 5400 },
+  trustScore:      { type: Number, default: 50 },
+  status:          { type: String, enum: ['active', 'inactive', 'suspended'], default: 'active' },
+  kycStatus:       { type: String, enum: ['verified', 'pending', 'failed'], default: 'verified' },
+  aaVerified:      { type: Boolean, default: false },
+  pushToken:       { type: String },
+  hypertrackDeviceId: { type: String },
+  deviceFingerprint:  { type: String },
+  locationHistory: [{ lat: Number, lon: Number, timestamp: { type: Date, default: Date.now } }],
+  registeredAt:    { type: Date, default: Date.now },
+  lastActive:      { type: Date, default: Date.now },
 })
 
 // ─── Zone Registry ────────────────────────────────────────────────────────────
@@ -111,6 +170,7 @@ let recentAutoTriggers = []
 
 const AdminUser = mongoose.model('AdminUser', adminUserSchema)
 const Claim     = mongoose.model('Claim',     claimSchema)
+const Worker    = mongoose.model('Worker',    workerSchema)
 
 // ─── Seed initial data if DB is empty ─────────────────────────────────────────
 
@@ -170,6 +230,22 @@ async function seedDatabase() {
       }))
       await Claim.insertMany(claims)
       console.log('✅ Claims seeded')
+    }
+    // Seed Workers
+    const workerCount = await Worker.countDocuments()
+    if (workerCount === 0) {
+      console.log('🌱 Seeding workers to MongoDB...')
+      await Worker.insertMany([
+        { workerId: 'W-4821', name: 'Rahul Kumar',  phone: '9876543210', upiId: 'rahul4821@oksbi',   zone: 'Noida Sector 18',    city: 'Noida',    plan: 'standard', weeklyPremium: 79,  earningsBaseline: 5400, trustScore: 78 },
+        { workerId: 'W-2234', name: 'Priya Sharma', phone: '9871234560', upiId: 'priya2234@okicici', zone: 'Delhi Rohini',       city: 'Delhi',    plan: 'premium',  weeklyPremium: 119, earningsBaseline: 6200, trustScore: 92 },
+        { workerId: 'W-6677', name: 'Amit Singh',   phone: '9988776655', upiId: 'amit6677@okhdfc',   zone: 'Gurugram Sector 45', city: 'Gurugram', plan: 'basic',    weeklyPremium: 49,  earningsBaseline: 4200, trustScore: 65 },
+        { workerId: 'W-1823', name: 'Neha Verma',   phone: '9911223344', upiId: 'neha1823@okaxis',   zone: 'Lucknow Hazratganj', city: 'Lucknow',  plan: 'standard', weeklyPremium: 79,  earningsBaseline: 5100, trustScore: 71 },
+        { workerId: 'W-9341', name: 'Rajesh Yadav', phone: '9876543211', upiId: 'rajesh9341@oksbi',  zone: 'Patna Boring Road',  city: 'Patna',    plan: 'standard', weeklyPremium: 84,  earningsBaseline: 5600, trustScore: 88 },
+        { workerId: 'W-3312', name: 'Sunita Patel', phone: '9844556677', upiId: 'sunita3312@okicici',zone: 'Delhi Saket',        city: 'Delhi',    plan: 'premium',  weeklyPremium: 119, earningsBaseline: 6800, trustScore: 95 },
+        { workerId: 'W-7745', name: 'Rohit Kumar',  phone: '9933445566', upiId: 'rohit7745@okhdfc',  zone: 'Noida Sector 62',    city: 'Noida',    plan: 'basic',    weeklyPremium: 52,  earningsBaseline: 4500, trustScore: 58 },
+        { workerId: 'W-5523', name: 'Kavita Rao',   phone: '9922334455', upiId: 'kavita5523@okaxis', zone: 'Gurugram DLF',       city: 'Gurugram', plan: 'standard', weeklyPremium: 79,  earningsBaseline: 5300, trustScore: 73 },
+      ])
+      console.log('✅ Workers seeded: 8')
     }
   } catch (err) {
     console.error('Seed error:', err.message)
@@ -973,12 +1049,226 @@ app.post('/premium/breakdown', async (req, res) => {
   }
 })
 
-// POST /aa/verify
+// POST /aa/verify — tries Setu sandbox first, falls back to mock
+const callSetuAA = async (phoneNumber) => {
+  try {
+    if (!process.env.SETU_CLIENT_ID || process.env.SETU_CLIENT_ID === 'your_setu_client_id') return null
+    const baseUrl = process.env.SETU_AA_BASE_URL || 'https://fiu-uat.setu.co'
+    const tokenRes = await axios.post(`${baseUrl}/auth/token`, {
+      clientID: process.env.SETU_CLIENT_ID,
+      secret:   process.env.SETU_CLIENT_SECRET
+    }, { timeout: 8000 })
+    const accessToken = tokenRes.data.accessToken
+    const consentRes = await axios.post(`${baseUrl}/consents`, {
+      consentDuration: { unit: 'MONTH', value: 1 },
+      dataRange: { from: '2025-01-01', to: new Date().toISOString().split('T')[0] },
+      context: [{ key: 'accounttype', value: 'SAVINGS' }],
+      vua: `${phoneNumber}@setu-sandbox`
+    }, { headers: { Authorization: `Bearer ${accessToken}` }, timeout: 8000 })
+    const transactions = consentRes.data?.transactions || []
+    const gigCredits = transactions.filter(t =>
+      t.narration?.toLowerCase().includes('zomato') ||
+      t.narration?.toLowerCase().includes('swiggy') ||
+      t.narration?.toLowerCase().includes('bundl')
+    )
+    if (gigCredits.length < 3) return null
+    const weeklyAvg = gigCredits.reduce((sum, t) => sum + t.amount, 0) / Math.max(1, gigCredits.length) * 4
+    return {
+      isGigWorker: true,
+      platform: gigCredits[0]?.narration?.toLowerCase().includes('zomato') ? 'Zomato' : 'Swiggy',
+      bankName: 'SBI',
+      avgWeeklyIncome: Math.round(weeklyAvg),
+      earningsBaselineHourly: Math.round(weeklyAvg / 56),
+      creditsLast8Weeks: gigCredits.length,
+      lastCreditDate: gigCredits[0]?.date || new Date().toISOString().split('T')[0],
+      confidenceScore: 0.91,
+      suggestedPlan: weeklyAvg > 6000 ? 'premium' : weeklyAvg > 4500 ? 'standard' : 'basic',
+      setuConsentId: consentRes.data?.id || 'sandbox'
+    }
+  } catch (err) {
+    console.log('Setu AA API error, using mock:', err.message)
+    return null
+  }
+}
+
 app.post('/aa/verify', async (req, res) => {
   try {
     const { phoneNumber = '9876543210' } = req.body
+    const setuResult = await callSetuAA(phoneNumber)
+    if (setuResult) return res.json({ ...setuResult, source: 'setu_sandbox' })
     const result = await mockAAVerification(phoneNumber)
-    res.json(result)
+    res.json({ ...result, source: 'mock' })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /payout/upi — Razorpay sandbox UPI payout
+const processUPIPayout = async (req, res) => {
+  const { workerId, upiId, amount, claimId, reason } = req.body
+  if (!workerId || !upiId || !amount || !claimId) {
+    return res.status(400).json({ error: 'Missing required fields: workerId, upiId, amount, claimId' })
+  }
+  try {
+    const payout = await razorpay.payouts.create({
+      account_number: '2323230082671888',
+      fund_account: {
+        account_type: 'vpa',
+        vpa: { address: upiId },
+        contact: {
+          name:         `Worker ${workerId}`,
+          type:         'employee',
+          reference_id: workerId,
+          email:        `${workerId.toLowerCase().replace('-', '')}@ridershield.in`,
+          contact:      '9999999999'
+        }
+      },
+      amount:               amount * 100,
+      currency:             'INR',
+      mode:                 'UPI',
+      purpose:              'payout',
+      queue_if_low_balance: true,
+      reference_id:         claimId,
+      narration:            reason || 'RiderShield Insurance Payout',
+    })
+    await Claim.findOneAndUpdate(
+      { claimId },
+      { status: 'paid', razorpayPayoutId: payout.id, razorpayStatus: payout.status, paidAt: new Date().toISOString() }
+    )
+    res.json({
+      success: true, payoutId: payout.id, status: payout.status,
+      amount, upiId, workerId, claimId,
+      message: `Rs. ${amount} payout initiated to ${upiId}`,
+      timestamp: new Date().toISOString()
+    })
+  } catch (err) {
+    console.log('Razorpay error (using simulation):', err.message)
+    const simulatedPayoutId = 'rzp_sim_' + Date.now()
+    await Claim.findOneAndUpdate(
+      { claimId },
+      { status: 'paid', razorpayPayoutId: simulatedPayoutId, razorpayStatus: 'processed', paidAt: new Date().toISOString() }
+    )
+    res.json({
+      success: true, payoutId: simulatedPayoutId, status: 'processed',
+      amount, upiId, workerId, claimId,
+      message: `Rs. ${amount} payout simulated to ${upiId}`,
+      simulated: true,
+      timestamp: new Date().toISOString()
+    })
+  }
+}
+
+app.post('/payout/upi', authenticateAdmin, processUPIPayout)
+
+app.get('/payout/status/:payoutId', authenticateAdmin, async (req, res) => {
+  try {
+    if (req.params.payoutId.startsWith('rzp_sim_')) {
+      return res.json({ id: req.params.payoutId, status: 'processed', simulated: true })
+    }
+    const payout = await razorpay.payouts.fetch(req.params.payoutId)
+    res.json(payout)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// GET /workers
+app.get('/workers', authenticateAdmin, async (req, res) => {
+  try {
+    const { page = 1, limit = 50, zone, plan, status } = req.query
+    const filter = {}
+    if (zone)   filter.zone   = zone
+    if (plan)   filter.plan   = plan
+    if (status) filter.status = status
+    const workers = await Worker.find(filter).sort({ registeredAt: -1 }).limit(Number(limit)).skip((Number(page) - 1) * Number(limit)).lean()
+    const total   = await Worker.countDocuments(filter)
+    res.json({ workers, total, page: Number(page) })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// GET /workers/:workerId
+app.get('/workers/:workerId', authenticateAdmin, async (req, res) => {
+  try {
+    const worker = await Worker.findOne({ workerId: req.params.workerId }).lean()
+    if (!worker) return res.status(404).json({ error: 'Worker not found' })
+    const recentClaims = await Claim.find({ workerId: req.params.workerId }).sort({ timestamp: -1 }).limit(5).lean()
+    res.json({ worker, recentClaims })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// PATCH /workers/:workerId/trust-score
+app.patch('/workers/:workerId/trust-score', authenticateAdmin, requireRole('superadmin'), async (req, res) => {
+  try {
+    const { trustScore, reason } = req.body
+    if (trustScore === undefined) return res.status(400).json({ error: 'trustScore is required' })
+    const worker = await Worker.findOneAndUpdate(
+      { workerId: req.params.workerId },
+      { trustScore: Math.max(0, Math.min(100, Number(trustScore))) },
+      { new: true }
+    )
+    if (!worker) return res.status(404).json({ error: 'Worker not found' })
+    console.log(`[${new Date().toISOString()}] Trust score updated for ${req.params.workerId} to ${trustScore} by ${req.admin.email}. Reason: ${reason}`)
+    res.json({ success: true, worker, reason })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// GET /analytics/forecast — 7-day risk forecast per zone
+app.get('/analytics/forecast', authenticateAdmin, async (req, res) => {
+  try {
+    const apiKey = process.env.OPENWEATHER_API_KEY
+    const zoneForecasts = await Promise.all(ZONES.map(async (zone) => {
+      let forecastDays = []
+      let nextWeekRisk = zone.riskScore
+      let dominantThreat = 'clear'
+      try {
+        if (apiKey) {
+          const forecastRes = await axios.get('https://api.openweathermap.org/data/2.5/forecast', {
+            params: { q: zone.city, appid: apiKey, units: 'metric', cnt: 40 },
+            timeout: 5000
+          })
+          const list = forecastRes.data.list || []
+          const dayMap = {}
+          list.forEach(item => {
+            const day = item.dt_txt.split(' ')[0]
+            if (!dayMap[day]) dayMap[day] = []
+            dayMap[day].push(item)
+          })
+          forecastDays = Object.keys(dayMap).slice(0, 7).map(date => {
+            const items = dayMap[date]
+            const maxRain = Math.max(...items.map(i => i.rain?.['3h'] || 0))
+            const maxTemp = Math.max(...items.map(i => i.main.temp))
+            let threat = 'clear', severity = 'low'
+            if (maxRain > 30) { threat = 'rain';  severity = maxRain > 50 ? 'severe' : 'moderate' }
+            else if (maxTemp > 40) { threat = 'heat'; severity = 'moderate' }
+            return { date, threat, severity, maxRain: Math.round(maxRain), maxTemp: Math.round(maxTemp) }
+          })
+          const severeCount  = forecastDays.filter(d => d.severity === 'severe').length
+          const moderateCount= forecastDays.filter(d => d.severity === 'moderate').length
+          nextWeekRisk = Math.min(1, zone.riskScore + severeCount * 0.1 + moderateCount * 0.05)
+          const threats = forecastDays.map(d => d.threat).filter(t => t !== 'clear')
+          dominantThreat = threats.length > 0 ? threats[0] : 'clear'
+        }
+      } catch { /* use defaults */ }
+      if (forecastDays.length === 0) {
+        forecastDays = Array.from({ length: 7 }, (_, i) => ({
+          date: new Date(Date.now() + i * 86400000).toISOString().split('T')[0],
+          threat: Math.random() > 0.7 ? 'rain' : 'clear',
+          severity: Math.random() > 0.8 ? 'moderate' : 'low'
+        }))
+      }
+      const expectedClaims = Math.round(zone.activeWorkers * nextWeekRisk * 0.15)
+      return { zoneName: zone.name, city: zone.city, nextWeekRisk: parseFloat(nextWeekRisk.toFixed(2)), expectedClaims, dominantThreat, forecastDays }
+    }))
+    const totalExpectedClaims  = zoneForecasts.reduce((s, z) => s + z.expectedClaims, 0)
+    const totalExpectedPayout  = totalExpectedClaims * 320
+    const highRiskZones = zoneForecasts.filter(z => z.nextWeekRisk > 0.7).map(z => z.zoneName)
+    res.json({ zones: zoneForecasts, totalExpectedClaims, totalExpectedPayout, highRiskZones })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
@@ -1018,9 +1308,580 @@ app.get('/analytics/live', authenticateAdmin, async (req, res) => {
   }
 })
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// REAL ANALYTICS — DB-BACKED CHARTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// GET /analytics/claims-by-type — for pie/bar chart
+app.get('/analytics/claims-by-type', authenticateAdmin, async (req, res) => {
+  try {
+    const agg = await Claim.aggregate([
+      { $group: { _id: '$type', count: { $sum: 1 }, totalPayout: { $sum: '$payoutAmount' } } },
+      { $sort: { count: -1 } }
+    ])
+    const total = agg.reduce((s, a) => s + a.count, 0)
+    const result = agg.map(a => ({
+      type:       a._id || 'unknown',
+      count:      a.count,
+      totalPayout:Math.round(a.totalPayout || 0),
+      pct:        total > 0 ? Math.round((a.count / total) * 100) : 0,
+    }))
+    res.json({ data: result, total })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// GET /analytics/weekly-trend — last 8 weeks payout totals
+app.get('/analytics/weekly-trend', authenticateAdmin, async (req, res) => {
+  try {
+    const eightWeeksAgo = new Date(Date.now() - 56 * 86400000)
+    const claims = await Claim.find({ timestamp: { $gte: eightWeeksAgo } }).lean()
+    const weeks = {}
+    claims.forEach(c => {
+      const d   = new Date(c.timestamp)
+      const dow = d.getDay()
+      const weekStart = new Date(d)
+      weekStart.setDate(d.getDate() - dow)
+      const key = weekStart.toISOString().split('T')[0]
+      if (!weeks[key]) weeks[key] = { label: key, val: 0, count: 0 }
+      weeks[key].val   += (c.payoutAmount || 0)
+      weeks[key].count += 1
+    })
+    const sorted = Object.values(weeks).sort((a, b) => new Date(a.label) - new Date(b.label)).slice(-8)
+    sorted.forEach((w, i) => { w.label = `W${i + 1}` })
+    // Pad to 8 weeks minimum
+    while (sorted.length < 8) {
+      sorted.unshift({ label: `W${sorted.length}`, val: 0, count: 0 })
+    }
+    res.json({ data: sorted })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// GET /analytics/trust-distribution — from real Worker documents
+app.get('/analytics/trust-distribution', authenticateAdmin, async (req, res) => {
+  try {
+    const workers = await Worker.find({}, { trustScore: 1 }).lean()
+    const ranges = [
+      { range: '90–100', label: 'Elite',    min: 90, max: 100 },
+      { range: '70–89',  label: 'High',     min: 70, max: 89  },
+      { range: '50–69',  label: 'Standard', min: 50, max: 69  },
+      { range: '30–49',  label: 'Low',      min: 30, max: 49  },
+      { range: '0–29',   label: 'New',      min: 0,  max: 29  },
+    ]
+    const total = workers.length || 1
+    const result = ranges.map(r => {
+      const count = workers.filter(w => w.trustScore >= r.min && w.trustScore <= r.max).length
+      return { ...r, workers: count, pct: Math.round((count / total) * 100) }
+    })
+    res.json({ data: result, total: workers.length })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// WORKER-FACING PUBLIC ENDPOINTS (no admin auth — used by mobile app)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// WORKER-FACING PUBLIC ENDPOINTS (no admin auth — used by mobile app)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// POST /worker/send-otp — Sends a REAL OTP via MSG91
+app.post('/worker/send-otp', async (req, res) => {
+  try {
+    const { phone } = req.body
+    if (!phone || phone.length < 10) return res.status(400).json({ error: 'Valid 10-digit phone required' })
+
+    // Check if already locked out (5 failed attempts)
+    const existing = OTP_STORE.get(phone)
+    if (existing && existing.lockedUntil && Date.now() < existing.lockedUntil) {
+      const minutesLeft = Math.ceil((existing.lockedUntil - Date.now()) / 60000)
+      return res.status(429).json({ error: `Too many attempts. Try again in ${minutesLeft} minute(s)` })
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString()
+    const expiry = Date.now() + 5 * 60 * 1000 // 5 minutes
+
+    // Store OTP
+    OTP_STORE.set(phone, { otp, expiry, attempts: 0 })
+
+    // Send via MSG91
+    const mobile = `91${phone}`
+    let smsSent = false
+
+    if (MSG91_TEMPLATE) {
+      // Send via MSG91 OTP API v5 (requires template)
+      try {
+        await axios.post(
+          `https://api.msg91.com/api/v5/otp?template_id=${MSG91_TEMPLATE}&mobile=${mobile}&authkey=${MSG91_AUTHKEY}&otp=${otp}`,
+          {},
+          { headers: { 'Content-Type': 'application/json' }, timeout: 8000 }
+        )
+        smsSent = true
+        console.log(`[SMS] OTP ${otp} sent to ${mobile} via MSG91`)
+      } catch (smsErr) {
+        console.log('[SMS] MSG91 failed:', smsErr.message)
+      }
+    } else {
+      // Fallback: send via MSG91 transactional SMS API (no DLT template required for dev)
+      try {
+        const message = `${otp} is your RiderShield verification code. Valid for 5 minutes. Do not share this OTP.`
+        await axios.get(
+          `https://api.msg91.com/api/sendhttp.php?authkey=${MSG91_AUTHKEY}&mobiles=${mobile}&message=${encodeURIComponent(message)}&sender=${MSG91_SENDER}&route=4&country=91`,
+          { timeout: 8000 }
+        )
+        smsSent = true
+        console.log(`[SMS] OTP ${otp} sent to ${mobile} via MSG91 transactional`)
+      } catch (smsErr) {
+        console.log('[SMS] MSG91 transactional failed:', smsErr.message)
+      }
+    }
+
+    // Always return success to prevent phone enumeration
+    res.json({
+      success: true,
+      message: 'OTP sent successfully',
+      smsSent,
+      // Only expose OTP in dev mode for testing without a real SIM
+      ...(process.env.NODE_ENV !== 'production' && { devOtp: otp })
+    })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /worker/verify-otp — Verifies real OTP + device binding
+app.post('/worker/verify-otp', async (req, res) => {
+  try {
+    const { phone, otp, pushToken, deviceFingerprint } = req.body
+    if (!phone || !otp) return res.status(400).json({ error: 'Phone and OTP required' })
+
+    // Get stored OTP
+    const stored = OTP_STORE.get(phone)
+    if (!stored) return res.status(401).json({ error: 'OTP not found or expired. Please request a new OTP' })
+    if (Date.now() > stored.expiry) {
+      OTP_STORE.delete(phone)
+      return res.status(401).json({ error: 'OTP expired. Please request a new one' })
+    }
+
+    // Attempt tracking — lockout after 5 wrong attempts
+    if (otp !== stored.otp) {
+      stored.attempts = (stored.attempts || 0) + 1
+      if (stored.attempts >= 5) {
+        OTP_STORE.set(phone, { ...stored, lockedUntil: Date.now() + 30 * 60 * 1000 })
+        return res.status(401).json({ error: 'Too many wrong attempts. Locked for 30 minutes' })
+      }
+      OTP_STORE.set(phone, stored)
+      return res.status(401).json({ error: `Invalid OTP. ${5 - stored.attempts} attempts remaining` })
+    }
+
+    // OTP correct — clear it
+    OTP_STORE.delete(phone)
+
+    let worker = await Worker.findOne({ phone })
+    let isNewWorker = false
+
+    if (!worker) {
+      isNewWorker = true
+      const newId = 'W-' + Math.floor(1000 + Math.random() * 9000)
+      worker = new Worker({
+        workerId: newId,
+        name: 'Gig Worker ' + newId.substring(2),
+        phone: phone,
+        zone: 'Noida Sector 18',
+        city: 'Noida',
+        trustScore: 40,
+        upiId: phone + '@paytm',
+        aaVerified: false,
+        kycStatus: 'pending',
+        deviceFingerprint: deviceFingerprint || null,
+      })
+    } else if (deviceFingerprint && worker.deviceFingerprint && worker.deviceFingerprint !== deviceFingerprint) {
+      // DEVICE BINDING CHECK — new device detected
+      console.log(`[SECURITY] New device login for ${phone} — old: ${worker.deviceFingerprint}, new: ${deviceFingerprint}`)
+      // Update device but flag as suspicious
+      worker.deviceFingerprint = deviceFingerprint
+      worker.trustScore = Math.max(20, (worker.trustScore || 50) - 10)
+    }
+
+    if (pushToken) worker.pushToken = pushToken
+    if (deviceFingerprint) worker.deviceFingerprint = deviceFingerprint
+    worker.lastActive = new Date()
+    await worker.save()
+
+    const token = jwt.sign({ workerId: worker.workerId, role: 'worker' }, JWT_SECRET, { expiresIn: '30d' })
+
+    res.json({
+      success: true,
+      isNewWorker,
+      workerId: worker.workerId,
+      token,
+      profile: {
+        name: worker.name,
+        zone: worker.zone,
+        trustScore: worker.trustScore,
+        aaVerified: worker.aaVerified
+      }
+    })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /worker/verify-firebase — validates Firebase Phone Auth token, returns Worker JWT
+// Flow: Firebase Phone Auth (app) → Firebase ID Token → this endpoint → our JWT
+app.post('/worker/verify-firebase', async (req, res) => {
+  try {
+    const { idToken, phone, deviceFingerprint, pushToken } = req.body
+    if (!idToken) return res.status(400).json({ error: 'Firebase ID token required' })
+
+    // Verify the Firebase ID token with Firebase Admin SDK
+    let decodedToken
+    try {
+      decodedToken = await admin.auth().verifyIdToken(idToken)
+    } catch (firebaseErr) {
+      console.log('[Firebase] Token verification failed:', firebaseErr.message)
+      return res.status(401).json({ error: 'Invalid or expired Firebase token' })
+    }
+
+    // Extract phone number from Firebase token (format: +91XXXXXXXXXX)
+    const firebasePhone = decodedToken.phone_number
+    const normalizedPhone = firebasePhone?.replace('+91', '') || phone
+
+    if (!normalizedPhone) return res.status(400).json({ error: 'Phone number not found in token' })
+
+    // Create or fetch worker
+    let worker = await Worker.findOne({ phone: normalizedPhone })
+    let isNewWorker = false
+
+    if (!worker) {
+      isNewWorker = true
+      const newId = 'W-' + Math.floor(1000 + Math.random() * 9000)
+      worker = new Worker({
+        workerId:          newId,
+        name:              'Gig Worker ' + newId.substring(2),
+        phone:             normalizedPhone,
+        zone:              'Noida Sector 18',
+        city:              'Noida',
+        trustScore:        40,
+        upiId:             normalizedPhone + '@paytm',
+        aaVerified:        false,
+        kycStatus:         'pending',
+        deviceFingerprint: deviceFingerprint || null,
+      })
+      console.log(`[AUTH] New worker registered: ${newId} (${normalizedPhone})`)
+    } else if (deviceFingerprint && worker.deviceFingerprint && worker.deviceFingerprint !== deviceFingerprint) {
+      // New device detected — flag suspicious, drop trust score
+      console.log(`[SECURITY] New device login for ${normalizedPhone}`)
+      worker.deviceFingerprint = deviceFingerprint
+      worker.trustScore = Math.max(20, (worker.trustScore || 50) - 10)
+    }
+
+    if (pushToken) worker.pushToken = pushToken
+    if (deviceFingerprint) worker.deviceFingerprint = deviceFingerprint
+    worker.lastActive = new Date()
+    await worker.save()
+
+    // Issue our own 30-day JWT
+    const token = jwt.sign({ workerId: worker.workerId, role: 'worker' }, JWT_SECRET, { expiresIn: '30d' })
+
+    console.log(`[AUTH] Firebase verified: ${normalizedPhone} → ${worker.workerId}`)
+    res.json({
+      success: true,
+      isNewWorker,
+      workerId:   worker.workerId,
+      token,
+      aaVerified: worker.aaVerified,
+      profile: {
+        name:       worker.name,
+        zone:       worker.zone,
+        trustScore: worker.trustScore,
+        aaVerified: worker.aaVerified,
+      }
+    })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /worker/track — Saves real hardware GPS breadcrumbs
+app.post('/worker/track', async (req, res) => {
+  try {
+    const { workerId, lat, lon } = req.body
+    if (!workerId || !lat || !lon) return res.status(400).json({ error: 'workerId, lat, lon required' })
+
+    await Worker.findOneAndUpdate(
+      { workerId },
+      { 
+        $push: { locationHistory: { $each: [{ lat, lon }], $slice: -100 } },
+        $set: { lastActive: new Date() }
+      }
+    )
+    res.json({ success: true })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /aa/verify — Real database-backed Account Aggregator verification simulation
+app.post('/aa/verify', async (req, res) => {
+  try {
+    const { workerId, bankName } = req.body
+    if (!workerId) return res.status(400).json({ error: 'workerId required' })
+
+    // Simulate backend ML / data analysis logic based on fake fetched bank data
+    const avgWeeklyIncome = Math.floor(3500 + Math.random() * 3000)
+    const baseline = Math.floor(avgWeeklyIncome / 50) // roughly hourly
+    const suggestedPlan = avgWeeklyIncome > 5000 ? 'premium' : 'standard'
+
+    // Save strictly to DB
+    await Worker.findOneAndUpdate(
+      { workerId },
+      {
+        aaVerified: true,
+        earningsBaseline: baseline * 50, // weekly
+        plan: suggestedPlan
+      }
+    )
+
+    res.json({
+      success: true,
+      platform: 'Zomato/Swiggy',
+      bankName: bankName || 'SBI',
+      avgWeeklyIncome,
+      earningsBaselineHourly: baseline,
+      creditsLast8Weeks: Math.floor(6 + Math.random() * 5),
+      lastCreditDate: new Date().toISOString().split('T')[0],
+      suggestedPlan
+    })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// GET /worker/profile/:workerId
+app.get('/worker/profile/:workerId', async (req, res) => {
+  try {
+    const worker = await Worker.findOne({ workerId: req.params.workerId }).lean()
+    if (!worker) return res.status(404).json({ error: 'Worker not found' })
+    // Mask sensitive fields
+    const { upiId, ...safe } = worker
+    safe.upiMasked = upiId ? upiId.slice(0, 4) + '****@' + upiId.split('@')[1] : null
+    res.json(safe)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// GET /worker/payouts/:workerId — worker's own claim/payout history
+app.get('/worker/payouts/:workerId', async (req, res) => {
+  try {
+    const claims = await Claim.find({ workerId: req.params.workerId })
+      .sort({ timestamp: -1 })
+      .limit(20)
+      .lean()
+    const totalPayout = claims.reduce((s, c) => s + (c.payoutAmount || 0), 0)
+    res.json({ payouts: claims, totalPayout: Math.round(totalPayout), count: claims.length })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /worker/push-token — register Expo push token for a worker
+app.post('/worker/push-token', async (req, res) => {
+  try {
+    const { workerId, pushToken } = req.body
+    if (!workerId || !pushToken) return res.status(400).json({ error: 'workerId and pushToken required' })
+    await Worker.findOneAndUpdate({ workerId }, { pushToken })
+    res.json({ success: true })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /worker/hypertrack-device — link HyperTrack device ID to worker
+app.post('/worker/hypertrack-device', async (req, res) => {
+  try {
+    const { workerId, hypertrackDeviceId } = req.body
+    if (!workerId || !hypertrackDeviceId) return res.status(400).json({ error: 'workerId and hypertrackDeviceId required' })
+    await Worker.findOneAndUpdate({ workerId }, { hypertrackDeviceId })
+    console.log(`[HyperTrack] Linked device ${hypertrackDeviceId} to worker ${workerId}`)
+    res.json({ success: true, hypertrackDeviceId })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// EXPO PUSH NOTIFICATION HELPER
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const sendExpoPushNotification = async (expoPushToken, title, body, data = {}) => {
+  if (!expoPushToken || !expoPushToken.startsWith('ExponentPushToken')) return
+  try {
+    await axios.post('https://exp.host/--/api/v2/push/send', {
+      to:    expoPushToken,
+      sound: 'default',
+      title,
+      body,
+      data,
+    }, { headers: { 'Content-Type': 'application/json' }, timeout: 8000 })
+    console.log(`[PUSH] Sent to ${expoPushToken}: ${title}`)
+  } catch (err) {
+    console.log('[PUSH] Notification failed:', err.message)
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// UPDATED PAYOUT — sends push notification to worker
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const processUPIPayoutWithNotification = async (req, res) => {
+  const { workerId, upiId, amount, claimId, reason } = req.body
+  if (!workerId || !upiId || !amount || !claimId) {
+    return res.status(400).json({ error: 'Missing required fields: workerId, upiId, amount, claimId' })
+  }
+
+  let payoutId, payoutStatus, simulated = false
+
+  try {
+    const payout = await razorpay.payouts.create({
+      account_number: '2323230082671888',
+      fund_account: {
+        account_type: 'vpa',
+        vpa: { address: upiId },
+        contact: {
+          name:         `Worker ${workerId}`,
+          type:         'employee',
+          reference_id: workerId,
+          email:        `${workerId.toLowerCase().replace('-', '')}@ridershield.in`,
+          contact:      '9999999999'
+        }
+      },
+      amount:               amount * 100,
+      currency:             'INR',
+      mode:                 'UPI',
+      purpose:              'payout',
+      queue_if_low_balance: true,
+      reference_id:         claimId,
+      narration:            reason || 'RiderShield Insurance Payout',
+    })
+    payoutId     = payout.id
+    payoutStatus = payout.status
+  } catch (err) {
+    console.log('Razorpay error (simulation):', err.message)
+    payoutId     = 'rzp_sim_' + Date.now()
+    payoutStatus = 'processed'
+    simulated    = true
+  }
+
+  await Claim.findOneAndUpdate(
+    { claimId },
+    { status: 'paid', razorpayPayoutId: payoutId, razorpayStatus: payoutStatus, paidAt: new Date().toISOString() }
+  )
+
+  // Send push notification to worker
+  const worker = await Worker.findOne({ workerId }).lean()
+  if (worker?.pushToken) {
+    await sendExpoPushNotification(
+      worker.pushToken,
+      '💰 Payout Credited!',
+      `Rs. ${amount} has been sent to your UPI for claim ${claimId}`,
+      { claimId, amount, type: 'payout' }
+    )
+  }
+
+  res.json({
+    success: true, payoutId, status: payoutStatus,
+    amount, upiId, workerId, claimId,
+    message: `Rs. ${amount} payout ${simulated ? 'simulated' : 'initiated'} to ${upiId}`,
+    simulated,
+    notificationSent: !!worker?.pushToken,
+    timestamp: new Date().toISOString()
+  })
+}
+
+// Override the old payout route
+app.post('/payout/upi', authenticateAdmin, processUPIPayoutWithNotification)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DEMO MODE — triggers a full end-to-end disruption → claim → payout flow
+// ═══════════════════════════════════════════════════════════════════════════════
+
+app.post('/admin/demo/trigger', authenticateAdmin, async (req, res) => {
+  try {
+    const { zone = 'Noida Sector 18', type = 'rain', severity = 0.85 } = req.body
+    const demoZone     = ZONES.find(z => z.name === zone) || ZONES[0]
+    const fraudResult  = runFraudDetection(zone, type, 'W-4821', 78)
+    const payoutAmount = Math.round(85 * 4 * severity)
+    const claimId      = 'DEMO-CLM-' + Date.now()
+
+    const claim = await new Claim({
+      claimId,
+      workerId:            'W-4821',
+      zone,
+      type,
+      severity,
+      hours:               4,
+      payoutAmount,
+      status:              'approved',
+      confidence:          fraudResult.confidenceScore,
+      hypertrackSessionId: fraudResult.hypertrack.sessionId,
+      autoTriggered:       true,
+    }).save()
+
+    const LABELS = { rain: 'Heavy rain', heat: 'Extreme heat', smog: 'Severe pollution', flood: 'Flood alert', curfew: 'Curfew or strike' }
+    const alert = {
+      id:             'DEMO-ALERT-' + Date.now(),
+      zoneId:         demoZone.id,
+      zoneName:       zone,
+      disruptionType: type,
+      severity,
+      payoutAmount,
+      status:         'credited',
+      message:        `[DEMO] ${LABELS[type] || 'Disruption'} detected in your zone`,
+      payoutMessage:  `Rs. ${payoutAmount} credited to your UPI`,
+      timestamp:      new Date().toISOString(),
+      expiresAt:      new Date(Date.now() + 3600000).toISOString(),
+    }
+    activeAlerts.push(alert)
+
+    // Push notification to demo worker
+    const demoWorker = await Worker.findOne({ workerId: 'W-4821' }).lean()
+    if (demoWorker?.pushToken) {
+      await sendExpoPushNotification(
+        demoWorker.pushToken,
+        `🌧️ ${LABELS[type]} Detected`,
+        `Rs. ${payoutAmount} is being credited to your UPI automatically.`,
+        { type: 'alert', claimId, zone }
+      )
+    }
+
+    res.json({
+      success:      true,
+      claimId,
+      zone,
+      type,
+      payoutAmount,
+      alert,
+      workerNotified: !!demoWorker?.pushToken,
+      message: `Demo triggered: ${type} in ${zone} → Rs. ${payoutAmount} claim created`
+    })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
 // ─── Start server ─────────────────────────────────────────────────────────────
 app.listen(port, () => {
-  console.log(`\n🛡  RiderShield Backend v2.0 on port ${port}`)
+  console.log(`\n🛡  RiderShield Backend v3.0 on port ${port}`)
   console.log(`📡  ML service: ${mlServiceUrl}`)
-  console.log(`🔐  JWT + Google auth enabled\n`)
+  console.log(`🔐  JWT + Google auth enabled`)
+  console.log(`🚀  Phase 3: Razorpay + Push Notifications + Demo Mode\n`)
 })
+

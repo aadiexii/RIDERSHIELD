@@ -1,28 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView, StatusBar, ActivityIndicator,
+  StyleSheet, SafeAreaView, StatusBar, ActivityIndicator
 } from 'react-native';
 import { ChevronLeft } from 'lucide-react-native';
 import { router } from 'expo-router';
+import { useAuth } from '../../context/AuthContext';
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.119:5000'; // Real device or live deployed
-// const BACKEND_URL = 'http://10.0.2.2:5000'; // Android emulator
+const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.119:5000';
 
 const C = {
-  bg:       '#0a0a0a',
-  card:     '#0f0f0f',
-  card2:    '#1a1a1a',
-  orange:   '#f97316',
-  white:    '#ffffff',
-  gray:     '#9ca3af',
-  green:    '#22c55e',
-  darkGray: '#374151',
+  bg: '#0a0a0a', card: '#0f0f0f', card2: '#1a1a1a',
+  orange: '#f97316', white: '#ffffff', gray: '#9ca3af',
+  green: '#22c55e', darkGray: '#374151',
 };
 
 const STEPS = [
-  'Connecting to Account Aggregator',
-  'Requesting bank consent',
+  'Verifying Bank Details via AA',
   'Fetching transaction history',
   'Analyzing Zomato/Swiggy credits',
   'Calculating income baseline',
@@ -38,45 +32,42 @@ function DataRow({ label, value }: { label: string; value: string }) {
 }
 
 export default function VerifyScreen() {
-  const [step, setStep]       = useState(-1);
-  const [aaData, setAaData]   = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { workerId } = useAuth();
+  const [phase, setPhase] = useState<'consent' | 'processing' | 'success'>('consent');
+  const [step, setStep] = useState(-1);
+  const [aaData, setAaData] = useState<any>(null);
 
-  useEffect(() => {
-    startVerification();
-  }, []);
-
-  const startVerification = async () => {
-    setLoading(true);
-    setAaData(null);
+  const handleApproveConsent = async () => {
+    setPhase('processing');
     setStep(-1);
 
     for (let i = 0; i < STEPS.length; i++) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 800));
       setStep(i);
     }
 
     try {
-      const res    = await fetch(`${BACKEND_URL}/aa/verify`, {
+      const res = await fetch(`${BACKEND_URL}/aa/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneNumber: '9876543210' }),
+        body: JSON.stringify({ workerId, bankName: 'SBI' }),
       });
       const result = await res.json();
-      setAaData(result);
+      if(res.ok) setAaData(result);
+      else throw new Error('API failure');
     } catch {
-      // Fallback if backend unreachable
+      // Fallback
       setAaData({
-        platform:               'Zomato',
-        bankName:               'SBI',
-        avgWeeklyIncome:        5150,
+        platform: 'Zomato',
+        bankName: 'SBI',
+        avgWeeklyIncome: 5150,
         earningsBaselineHourly: 92,
-        creditsLast8Weeks:      8,
-        lastCreditDate:         '2026-03-30',
-        suggestedPlan:          'standard',
+        creditsLast8Weeks: 8,
+        lastCreditDate: new Date().toISOString().split('T')[0],
+        suggestedPlan: 'standard',
       });
     }
-    setLoading(false);
+    setPhase('success');
   };
 
   return (
@@ -98,40 +89,59 @@ export default function VerifyScreen() {
         <Text style={s.label}>Verifying your</Text>
         <Text style={s.heading}>Gig Worker Status</Text>
 
-        {/* Verification card */}
-        <View style={s.verifyCard}>
-          <View style={s.aaHeader}>
-            <View style={s.aaIconBox}>
-              <Text style={s.aaIconText}>AA</Text>
+        {phase === 'consent' && (
+          <View style={s.consentCard}>
+            <View style={s.aaHeader}>
+              <View style={s.aaIconBox}>
+                <Text style={s.aaIconText}>AA</Text>
+              </View>
+              <Text style={s.aaName}>Setu Account Aggregator</Text>
+              <Text style={s.aaRegulated}>RBI Regulated · Secure Identity</Text>
             </View>
-            <Text style={s.aaName}>Setu Account Aggregator</Text>
-            <Text style={s.aaRegulated}>RBI Regulated · Secure</Text>
+            <View style={s.divider} />
+            <Text style={s.consentBodyText}>
+              GigShield Insurance requires access to your bank transactions for the past 6 months to calculate your average weekly income and suggest a custom premium plan.
+            </Text>
+            <View style={s.bankBox}>
+              <Text style={s.bankLabel}>Bank Discovered</Text>
+              <Text style={s.bankValue}>State Bank of India (SBI)</Text>
+              <Text style={s.bankSub}>A/c ending in 4021</Text>
+            </View>
+            <TouchableOpacity style={s.primaryBtn} onPress={handleApproveConsent}>
+              <Text style={s.primaryBtnText}>Approve Consent</Text>
+            </TouchableOpacity>
           </View>
+        )}
 
-          <View style={s.divider} />
-
-          {STEPS.map((label, i) => (
-            <View key={i} style={s.stepRow}>
-              {step > i ? (
-                <View style={[s.stepCircle, s.stepDone]}>
-                  <Text style={s.stepCheck}>✓</Text>
-                </View>
-              ) : step === i ? (
-                <View style={[s.stepCircle, s.stepActive]}>
-                  <ActivityIndicator color={C.white} size="small" />
-                </View>
-              ) : (
-                <View style={[s.stepCircle, s.stepPending]} />
-              )}
-              <Text style={[s.stepLabel, { opacity: step >= i ? 1 : 0.35 }]}>{label}</Text>
+        {phase === 'processing' && (
+          <View style={s.verifyCard}>
+            <View style={s.aaHeader}>
+              <View style={s.aaIconBox}>
+                <Text style={s.aaIconText}>AA</Text>
+              </View>
+              <Text style={s.aaName}>Setu Account Aggregator</Text>
+              <Text style={s.aaRegulated}>RBI Regulated · Secure</Text>
             </View>
-          ))}
+            <View style={s.divider} />
+            {STEPS.map((label, i) => (
+              <View key={i} style={s.stepRow}>
+                {step > i ? (
+                  <View style={[s.stepCircle, s.stepDone]}><Text style={s.stepCheck}>✓</Text></View>
+                ) : step === i ? (
+                  <View style={[s.stepCircle, s.stepActive]}>
+                    <ActivityIndicator color={C.white} size="small" />
+                  </View>
+                ) : (
+                  <View style={[s.stepCircle, s.stepPending]} />
+                )}
+                <Text style={[s.stepLabel, { opacity: step >= i ? 1 : 0.35 }]}>{label}</Text>
+              </View>
+            ))}
+            <Text style={s.dontClose}>Do not close the app</Text>
+          </View>
+        )}
 
-          {loading && <Text style={s.dontClose}>Do not close the app</Text>}
-        </View>
-
-        {/* Success data card */}
-        {!loading && aaData && (
+        {phase === 'success' && aaData && (
           <View style={s.successCard}>
             <View style={s.successHeader}>
               <View style={s.successCircle}>
@@ -145,12 +155,12 @@ export default function VerifyScreen() {
 
             <View style={[s.divider, { borderColor: 'rgba(34,197,94,0.2)' }]} />
 
-            <DataRow label="Platform"          value={aaData.platform}                                   />
-            <DataRow label="Bank"              value={aaData.bankName}                                   />
-            <DataRow label="Avg Weekly Income" value={`Rs. ${aaData.avgWeeklyIncome}`}                   />
-            <DataRow label="Income Baseline"   value={`Rs. ${aaData.earningsBaselineHourly}/hr`}         />
-            <DataRow label="Credits (8 weeks)" value={`${aaData.creditsLast8Weeks} payments`}            />
-            <DataRow label="Last Credit"       value={aaData.lastCreditDate}                             />
+            <DataRow label="Platform"          value={aaData.platform} />
+            <DataRow label="Bank"              value={aaData.bankName} />
+            <DataRow label="Avg Weekly Income" value={`Rs. ${aaData.avgWeeklyIncome}`} />
+            <DataRow label="Income Baseline"   value={`Rs. ${aaData.earningsBaselineHourly}/hr`} />
+            <DataRow label="Credits (8 weeks)" value={`${aaData.creditsLast8Weeks} payments`} />
+            <DataRow label="Last Credit"       value={aaData.lastCreditDate} />
 
             <View style={s.recommendBox}>
               <Text style={s.recommendLabel}>AI Recommendation:</Text>
@@ -158,12 +168,11 @@ export default function VerifyScreen() {
             </View>
 
             <TouchableOpacity
-              style={s.primaryBtn}
+              style={s.nextBtn}
               onPress={() => router.push('/onboarding/plan')}
               activeOpacity={0.85}
             >
-              <Text style={s.primaryBtnText}>Continue to Plan Selection</Text>
-              <Text style={s.primaryBtnSub}>Income data saved for premium calculation</Text>
+              <Text style={s.primaryBtnText}>Continue</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -182,6 +191,13 @@ const s = StyleSheet.create({
   progressActive:  { backgroundColor: C.orange },
   label:           { color: C.gray, fontSize: 16 },
   heading:         { color: C.white, fontSize: 28, fontWeight: '800', marginBottom: 20 },
+
+  consentCard:     { backgroundColor: C.card, borderRadius: 16, padding: 24, marginTop: 4 },
+  consentBodyText: { color: "#e5e7eb", fontSize: 14, lineHeight: 22, marginBottom: 20 },
+  bankBox:         { backgroundColor: C.card2, padding: 16, borderRadius: 12, marginBottom: 24 },
+  bankLabel:       { color: C.gray, fontSize: 12, marginBottom: 4 },
+  bankValue:       { color: C.white, fontSize: 16, fontWeight: 'bold' },
+  bankSub:         { color: "#8b5cf6", fontSize: 12, marginTop: 4 },
 
   verifyCard:      { backgroundColor: C.card, borderRadius: 16, padding: 24, marginTop: 4 },
   aaHeader:        { alignItems: 'center', marginBottom: 4 },
@@ -216,7 +232,7 @@ const s = StyleSheet.create({
   recommendLabel:  { color: C.gray, fontSize: 12 },
   recommendValue:  { color: C.orange, fontSize: 12, fontWeight: '700' },
 
-  primaryBtn:      { backgroundColor: C.orange, borderRadius: 14, padding: 18, alignItems: 'center', marginTop: 20 },
+  primaryBtn:      { backgroundColor: C.orange, borderRadius: 14, padding: 16, alignItems: 'center' },
   primaryBtnText:  { color: C.white, fontSize: 16, fontWeight: '700' },
-  primaryBtnSub:   { color: 'rgba(255,255,255,0.6)', fontSize: 11, marginTop: 4 },
+  nextBtn:         { backgroundColor: C.orange, borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 20 },
 });

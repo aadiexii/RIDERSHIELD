@@ -20,7 +20,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.aadiexii.workerapp"
+      "package": "com.aadiexii.workerapp",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",
@@ -39,7 +40,14 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      [
+        "hypertrack-sdk-expo",
+        {
+          "publishableKey": "LZZLxVx_rtQKSyTb0vPnDQXCGkjAzrJVnvhJH02vtW_0rkow5hEDdgQPP0Mjb9_T4Z5yRSTbf9IO6aFtIE-J4g"
+        }
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -49,7 +57,8 @@
       "router": {},
       "eas": {
         "projectId": "d1e9bf80-6eb0-40d5-bbfe-abdf75b87a9e"
-      }
+      },
+      "hypertrackPublishableKey": "LZZLxVx_rtQKSyTb0vPnDQXCGkjAzrJVnvhJH02vtW_0rkow5hEDdgQPP0Mjb9_T4Z5yRSTbf9IO6aFtIE-J4g"
     }
   }
 }
