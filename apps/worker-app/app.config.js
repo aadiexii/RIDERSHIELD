@@ -1,0 +1,66 @@
+const { withAndroidGoogleServicesFile } = require('@expo/config-plugins');
+
+const config = {
+  name: "worker-app",
+  slug: "worker-app",
+  version: "1.0.0",
+  orientation: "portrait",
+  icon: "./assets/images/icon.png",
+  scheme: "workerapp",
+  userInterfaceStyle: "automatic",
+  newArchEnabled: true,
+  ios: {
+    supportsTablet: true
+  },
+  android: {
+    adaptiveIcon: {
+      backgroundColor: "#E6F4FE",
+      foregroundImage: "./assets/images/android-icon-foreground.png",
+      backgroundImage: "./assets/images/android-icon-background.png",
+      monochromeImage: "./assets/images/android-icon-monochrome.png"
+    },
+    edgeToEdgeEnabled: true,
+    predictiveBackGestureEnabled: false,
+    package: "com.aadiexii.workerapp",
+    googleServicesFile: process.env.GOOGLE_SERVICES_JSON || "./google-services.json"
+  },
+  web: {
+    output: "static",
+    favicon: "./assets/images/favicon.png"
+  },
+  plugins: [
+    "expo-router",
+    [
+      "expo-splash-screen",
+      {
+        image: "./assets/images/splash-icon.png",
+        imageWidth: 200,
+        resizeMode: "contain",
+        backgroundColor: "#ffffff",
+        dark: {
+          backgroundColor: "#000000"
+        }
+      }
+    ],
+    [
+      "hypertrack-sdk-expo",
+      {
+        publishableKey: "LZZLxVx_rtQKSyTb0vPnDQXCGkjAzrJVnvhJH02vtW_0rkow5hEDdgQPP0Mjb9_T4Z5yRSTbf9IO6aFtIE-J4g"
+      }
+    ],
+    "expo-secure-store"
+  ],
+  experiments: {
+    typedRoutes: true,
+    reactCompiler: true
+  },
+  extra: {
+    router: {},
+    eas: {
+      projectId: "d1e9bf80-6eb0-40d5-bbfe-abdf75b87a9e"
+    },
+    hypertrackPublishableKey: "LZZLxVx_rtQKSyTb0vPnDQXCGkjAzrJVnvhJH02vtW_0rkow5hEDdgQPP0Mjb9_T4Z5yRSTbf9IO6aFtIE-J4g"
+  }
+};
+
+export default config;
