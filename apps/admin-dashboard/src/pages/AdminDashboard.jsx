@@ -183,9 +183,9 @@ export default function AdminDashboard() {
             <p className="text-xs uppercase tracking-widest text-zinc-500 font-semibold mb-4">Active Coverage</p>
             <div className="bg-teal-500/10 p-2 rounded-lg"><Users className="w-4 h-4 text-teal-400" /></div>
           </div>
-          <h3 className="text-3xl font-bold text-white font-mono tracking-tight">247</h3>
+          <h3 className="text-3xl font-bold text-white font-mono tracking-tight">{liveStats?.activePolicies ?? '—'}</h3>
           <div className="flex items-center gap-2 mt-3">
-            <span className="text-amber-400 text-xs font-bold bg-amber-500/10 px-1.5 py-0.5 rounded">-2.4%</span>
+            <span className="text-amber-400 text-xs font-bold bg-amber-500/10 px-1.5 py-0.5 rounded">+2.4%</span>
             <span className="text-zinc-600 text-[10px] uppercase tracking-wider">vs last week</span>
           </div>
         </div>

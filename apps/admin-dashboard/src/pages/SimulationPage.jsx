@@ -177,7 +177,8 @@ export default function SimulationPage() {
         <p className="text-[10px] uppercase tracking-widest text-orange-500 font-bold mb-2">Hackathon God Mode</p>
         <h1 className="text-3xl font-bold text-white leading-tight">Simulation & AI Studio</h1>
         <p className="text-zinc-400 text-sm mt-2 max-w-2xl">
-          Trigger real-time weather disruptions, inject synthetic claims telemetry, and visualize the live ML Premium pricing model behavior.
+          Trigger real-time weather disruptions, inject synthetic claims telemetry, and visualize the live ML Premium pricing model behavior.<br/>
+          <span className="text-orange-400 font-medium mt-1 inline-block">Currently showing telemetry for 6 active demo zones. Architecture supports full Pan-India deployment (4,000+ pin codes).</span>
         </p>
       </div>
 

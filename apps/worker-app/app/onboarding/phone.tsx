@@ -26,6 +26,16 @@ export default function PhoneScreen() {
     if (phone.length < 10) return;
     setLoading(true);
     setError('');
+
+    // HACKATHON DEMO BYPASS
+    if (phone === '9999999999') {
+      setTimeout(() => {
+        setLoading(false);
+        router.push({ pathname: '/onboarding/otp', params: { phone } });
+      }, 800);
+      return;
+    }
+
     try {
       const phoneNumber = `+91${phone}`;
       const confirmation = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier.current);
@@ -39,7 +49,7 @@ export default function PhoneScreen() {
         ? 'Too many attempts. Try again later.'
         : 'Failed to send OTP. Try again.');
     } finally {
-      setLoading(false);
+      if (phone !== '9999999999') setLoading(false);
     }
   };
 
@@ -88,6 +98,18 @@ export default function PhoneScreen() {
       <Text style={s.inputNote}>
         Your number must be linked to your Zomato/Swiggy account
       </Text>
+
+      {/* HACKATHON DEMO HINT */}
+      <View style={{ backgroundColor: 'rgba(59,130,246,0.1)', padding: 16, borderRadius: 12, marginBottom: 24, borderWidth: 1, borderColor: 'rgba(59,130,246,0.3)' }}>
+        <Text style={{ color: '#60a5fa', fontSize: 14, fontWeight: '800', textAlign: 'center', marginBottom: 6 }}>Hackathon Judges</Text>
+        <Text style={{ color: '#93c5fd', fontSize: 12, textAlign: 'center', lineHeight: 18 }}>
+          Bypass SMS verification for a seamless evaluation:
+        </Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: 8 }}>
+          <Text style={{ color: '#93c5fd', fontSize: 12 }}>Phone: <Text style={{ color: '#fff', fontWeight: 'bold' }}>9999999999</Text></Text>
+          <Text style={{ color: '#93c5fd', fontSize: 12 }}>OTP: <Text style={{ color: '#fff', fontWeight: 'bold' }}>123456</Text></Text>
+        </View>
+      </View>
 
       {error ? <Text style={s.errorTxt}>{error}</Text> : null}
 

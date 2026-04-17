@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { AppState, AppStateStatus, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { House, Wallet, Shield, User, TrendingUp, Fingerprint } from 'lucide-react-native';
+import { House, Wallet, Shield, User, TrendingUp, Fingerprint, BookOpen } from 'lucide-react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 
 export default function TabLayout() {
@@ -125,6 +125,14 @@ export default function TabLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="docs"
+        options={{
+          href: null,
+          title: 'Guide',
+          tabBarIcon: ({ color, size }) => <BookOpen color={color} size={size} />,
         }}
       />
     </Tabs>

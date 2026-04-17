@@ -139,6 +139,35 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
+        {/* ══ LIQUIDITY RESERVE POOL ═══════════════════════════════════════════════ */}
+        <div className="bg-[#111] border border-orange-500/20 rounded-2xl p-6 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
+          <div className="absolute -right-20 -top-20 w-64 h-64 bg-orange-500/10 blur-[100px] pointer-events-none" />
+          
+          <div>
+            <h2 className="text-xl font-bold text-white mb-1 flex items-center gap-2" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
+              <Shield className="w-5 h-5 text-orange-400" /> Insurer Reserve Pool & Liquidity
+            </h2>
+            <p className="text-zinc-400 text-sm max-w-xl">
+              Live monitoring of collected premiums vs. parametric claims paid. This ensures the 
+              platform maintains over-collateralized liquidity to handle catastrophic Black Swan weather events across multiple cities simultaneously.
+            </p>
+          </div>
+          
+          <div className="flex gap-6 items-center bg-[#0a0a0a] border border-white/10 rounded-xl p-4 shrink-0 z-10">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-1">Gross Float (INR)</p>
+              <p className="text-2xl font-mono font-bold text-green-400">Rs. 82,40,500</p>
+            </div>
+            <div className="w-px h-10 bg-white/10" />
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-1">Risk of Ruin</p>
+              <p className="text-2xl font-mono font-bold text-white flex items-center gap-2">
+                1.4% <span className="text-[10px] px-2 py-0.5 bg-green-500/10 text-green-400 rounded-full border border-green-500/20 font-sans tracking-normal uppercase font-bold">Safe</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* ══ KPI STRIP ════════════════════════════════════════════════════════════ */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
           {/* Total Payouts */}

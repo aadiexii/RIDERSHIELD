@@ -110,6 +110,10 @@ export default function VerifyScreen() {
             <TouchableOpacity style={s.primaryBtn} onPress={handleApproveConsent}>
               <Text style={s.primaryBtnText}>Approve Consent</Text>
             </TouchableOpacity>
+            
+            <Text style={{ color: C.gray, fontSize: 11, textAlign: 'center', marginTop: 12 }}>
+              Hackathon Note: Using pre-configured test number (+91 99999 99999) to sync mock Zomato API credits.
+            </Text>
           </View>
         )}
 

@@ -4,6 +4,7 @@ import LandingPage from './pages/LandingPage';
 import DocsPage from './pages/DocsPage';
 import WorkerDashboard from './pages/WorkerDashboard';
 import SponsorPage from './pages/SponsorPage';
+import AIBot from './components/AIBot';
 
 // ─── AppShell ─────────────────────────────────────────────────────────────────
 function AppShell() {
@@ -29,6 +30,7 @@ function AppShell() {
           <Route path="*"          element={<Navigate to="/" replace />} />
         </Routes>
       </div>
+      <AIBot />
     </div>
   );
 }

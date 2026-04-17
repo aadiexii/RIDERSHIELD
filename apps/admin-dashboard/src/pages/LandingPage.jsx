@@ -911,7 +911,7 @@ export default function LandingPage() {
             </div>
             {[
               { title:'Platform', links:[['How It Works','#how-it-works'],['Features','#features'],['Pricing','#plans'],['Docs','/docs']] },
-              { title:'Legal',    links:[['Privacy Policy','#'],['Terms of Service','#'],['Contact','#']] },
+              { title:'Legal',    links:[['Privacy Policy','/docs'],['Terms of Service','/docs'],['Contact','mailto:campusdiaries2024@gmail.com']] },
               { title:'Connect',  links:[['GitHub','#'],['Twitter','#'],['LinkedIn','#']] },
             ].map(col => (
               <div key={col.title}>

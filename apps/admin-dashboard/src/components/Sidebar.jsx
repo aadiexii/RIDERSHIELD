@@ -12,8 +12,10 @@ import {
   Terminal,
   RefreshCcw,
   BugPlay,
+  Gift,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Cpu
 } from 'lucide-react';
 
 const ROLE_DOT = {
@@ -35,6 +37,7 @@ const NAV_GROUPS = [
     items: [
       { id: 'claims', label: 'Claims Engine', icon: FileText, to: '/claims' },
       { id: 'analytics', label: 'Analytics', icon: BarChart2, to: '/analytics' },
+      { id: 'rewards', label: 'Rewards & Rebacks', icon: Gift, to: '/rewards' },
       { id: 'zones', label: 'Zone Map', icon: Map, to: '/zones' },
     ]
   },
@@ -42,6 +45,7 @@ const NAV_GROUPS = [
     label: 'Platform',
     items: [
       { id: 'workers', label: 'Workers', icon: Users, to: '/workers' },
+      { id: 'orchestration', label: 'System Orchestrator', icon: Cpu, to: '/orchestration' },
       { id: 'docs', label: 'Documentation', icon: FileCode2, to: '/docs' },
     ]
   }
@@ -71,7 +75,11 @@ export default function Sidebar() {
   const handleCron = async () => {
     try {
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      await fetch(`${API_URL}/cron/run`, { method: 'POST' });
+      const token = localStorage.getItem('ridershield_admin_token');
+      await fetch(`${API_URL}/cron/run`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setLastCron(Date.now());
     } catch { /* ignore */ }
   };
@@ -161,30 +169,7 @@ export default function Sidebar() {
         ))}
       </div>
 
-      {/* Dev Tools Drawer (Collapsible) */}
-      {!collapsed && (
-        <div className="px-4 pb-2 shrink-0">
-          <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showDevTab ? 'mb-2 opacity-100 max-h-40' : 'max-h-0 opacity-0'}`}>
-             <div className="bg-[#111] border border-[#222] rounded-xl p-3 flex flex-col gap-2">
-               <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-zinc-500 font-mono uppercase">Dev Tools</span>
-                  <span className="text-[9px] font-mono text-zinc-600 flex items-center gap-1">
-                    <div className={`w-1.5 h-1.5 rounded-full ${lastCron && (Date.now() - lastCron < 15*60000) ? 'bg-green-500' : 'bg-red-500'}`} />
-                    CRON
-                  </span>
-               </div>
-               <div className="flex items-center gap-2">
-                 <button onClick={handleCron} className="flex-1 flex items-center justify-center gap-1.5 bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white text-[11px] py-1.5 rounded-lg border border-white/5 transition-colors">
-                    <RefreshCcw className="w-3 h-3" /> Execute
-                 </button>
-                 <button onClick={() => window.location.reload()} className="flex-1 flex items-center justify-center gap-1.5 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 hover:text-orange-300 text-[11px] py-1.5 rounded-lg border border-orange-500/20 transition-colors">
-                    <BugPlay className="w-3 h-3" /> Reset
-                 </button>
-               </div>
-             </div>
-          </div>
-        </div>
-      )}
+      {/* Navigation Spacer */}
 
       {/* User Profile Bar */}
       <div className={`shrink-0 ${collapsed ? 'px-3 pb-4' : 'px-4 pb-4'}`}>
@@ -205,14 +190,11 @@ export default function Sidebar() {
           
           <div className={`flex flex-shrink-0 ${collapsed ? 'flex-col gap-2' : 'gap-1'}`}>
             <button 
-              onClick={() => {
-                if (collapsed) setCollapsed(false);
-                setShowDevTab(!showDevTab);
-              }}
-              className={`p-1.5 text-zinc-500 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer ${showDevTab && !collapsed ? 'bg-white/10 text-white' : ''}`}
-              title="Toggle Dev Panel"
+              onClick={() => navigate('/orchestration')}
+              className={`p-1.5 text-zinc-500 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer`}
+              title="System Orchestrator"
             >
-              <Terminal className="w-4 h-4" />
+              <Cpu className="w-4 h-4" />
             </button>
             <button 
               onClick={handleLogout}

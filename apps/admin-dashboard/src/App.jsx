@@ -8,7 +8,9 @@ import Claims from './pages/Claims';
 import Analytics from './pages/Analytics';
 import Workers from './pages/Workers';
 import ZoneMapPage from './pages/ZoneMapPage';
+import Rewards from './pages/Rewards';
 import DocsPage from './pages/DocsPage';
+import OrchestrationHub from './pages/OrchestrationHub';
 import { LanguageProvider } from './context/LanguageContext';
 
 
@@ -82,6 +84,8 @@ function AppShell() {
         <Route path="/analytics"  element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
         <Route path="/workers"    element={<ProtectedRoute><Workers /></ProtectedRoute>} />
         <Route path="/zones"      element={<ProtectedRoute><ZoneMapPage /></ProtectedRoute>} />
+        <Route path="/rewards"    element={<ProtectedRoute><Rewards /></ProtectedRoute>} />
+        <Route path="/orchestration" element={<ProtectedRoute><OrchestrationHub /></ProtectedRoute>} />
         <Route path="/docs"       element={<ProtectedRoute><DocsPage /></ProtectedRoute>} />
 
         {/* Legacy paths → redirect */}

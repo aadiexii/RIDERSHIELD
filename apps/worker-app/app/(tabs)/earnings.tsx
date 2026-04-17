@@ -78,6 +78,27 @@ export default function EarningsScreen() {
           </View>
         </View>
 
+        {/* No-Claim Reback Tracker */}
+        <View style={{ backgroundColor: '#0f0f0f', borderRadius: 16, marginHorizontal: 16, padding: 20, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(234,179,8,0.2)' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={{ fontSize: 16 }}>⭐</Text>
+              <Text style={{ color: '#eab308', fontSize: 15, fontWeight: '700' }}>No-Claim Reback Tracker</Text>
+            </View>
+            <Text style={{ color: '#eab308', fontSize: 16, fontWeight: '900' }}>{profile?.noClaimStreak || 0} / 4</Text>
+          </View>
+          <Text style={{ color: '#a1a1aa', fontSize: 12, marginBottom: 16, lineHeight: 18 }}>
+            Drive safe without manual Safety Mode claims for 4 weeks to receive a 15% cashback on all your paid premiums!
+          </Text>
+          <View style={{ height: 6, backgroundColor: '#1a1a1a', borderRadius: 3, flexDirection: 'row' }}>
+            <View style={{ height: 6, borderRadius: 3, backgroundColor: '#eab308', width: `${Math.min(100, ((profile?.noClaimStreak || 0) / 4) * 100)}%` }} />
+          </View>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
+            <Text style={{ color: '#52525b', fontSize: 10, fontWeight: '600' }}>Start</Text>
+            <Text style={{ color: '#52525b', fontSize: 10, fontWeight: '600' }}>15% Cashback</Text>
+          </View>
+        </View>
+
         {/* Stats Grid */}
         <View style={s.statsGrid}>
           {[

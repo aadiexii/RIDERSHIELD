@@ -80,7 +80,7 @@ export default function ProfileScreen() {
               {plan.charAt(0).toUpperCase() + plan.slice(1)} Plan · Active
             </Text>
           </View>
-          <Text style={s.workerId}>{WORKER_ID}</Text>
+          <Text style={s.workerId}>{workerId}</Text>
         </View>
 
         {/* Trust Score */}

@@ -78,6 +78,11 @@ services/backend/.env
 services/ml-service/.env
 apps/admin-dashboard/.env
 apps/worker-app/.env
+apps/public-website/.env
+
+# Google services (Firebase Android — contains project secrets)
+google-services.json
+GoogleService-Info.plist
 
 # Editor directories and files
 .idea

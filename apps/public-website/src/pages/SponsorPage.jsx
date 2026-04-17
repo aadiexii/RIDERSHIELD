@@ -182,7 +182,7 @@ export default function SponsorPage() {
             </p>
           </div>
           <a
-            href="mailto:partner@ridershield.in"
+            href="mailto:campusdiaries2024@gmail.com"
             className="shrink-0 flex items-center gap-2 px-6 py-3 bg-white/6 border border-white/12 rounded-xl text-sm font-semibold text-white hover:bg-white/10 transition-colors"
           >
             <ExternalLink className="w-4 h-4" />

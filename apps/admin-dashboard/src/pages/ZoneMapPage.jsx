@@ -54,7 +54,8 @@ export default function ZoneMapPage() {
             </p>
             <h1 className="text-3xl font-bold text-white leading-tight">Zone Risk Map</h1>
             <p className="text-zinc-400 text-sm mt-1">
-              Real-time geographic risk monitoring across all covered zones
+              Real-time geographic risk monitoring across all covered zones.<br/>
+              <span className="text-orange-400 font-medium mt-1 inline-block">Displaying 6 live demo regions. System natively scales to Pan-India API coverage.</span>
             </p>
           </div>
           <div className="flex items-center gap-3">

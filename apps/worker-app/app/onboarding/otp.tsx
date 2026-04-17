@@ -28,8 +28,36 @@ export default function OtpScreen() {
   const verifyOtp = async (code: string) => {
     setLoading(true);
     setErrorMsg('');
+
     try {
-      // Step 1: Verify OTP with Firebase
+      // HACKATHON DEMO BYPASS
+      if (phone === '9999999999') {
+        if (code !== '123456') {
+          setErrorMsg('Demo OTP is 123456. Please try again.');
+          setLoading(false);
+          return;
+        }
+
+        const res = await fetch(`${BACKEND_URL}/worker/verify-firebase`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken: 'DEMO_HACKATHON_TOKEN_123', phone, deviceFingerprint }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        await login(data.workerId, data.token);
+        // Standard user onboarding pipeline
+        if (data.isNewWorker || !data.aaVerified) {
+          router.push('/onboarding/verify');
+        } else {
+          router.replace('/(tabs)');
+        }
+        return; // Early exit so we don't hit real Firebase validation below
+      }
+
+
+      // Step 1: Verify OTP with Firebase (REAL PRODUCTION FLOW)
       const confirmation = getConfirmationResult();
       if (!confirmation) {
         setErrorMsg('Session expired. Please go back and request OTP again.');

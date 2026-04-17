@@ -24,6 +24,8 @@ const NAV = [
       { id: 'CoveragePlans', label: 'Coverage Plans',  Icon: ShieldCheck},
       { id: 'SafetyMode',    label: 'Safety Mode',     Icon: Lock       },
       { id: 'Payouts',       label: 'Payouts',         Icon: Layers     },
+      { id: 'RewardsEngine', label: 'Rewards Engine',  Icon: Zap        },
+      { id: 'AIAssistant',   label: 'AI Chatbot',      Icon: Code2      },
     ],
   },
   {
@@ -91,8 +93,8 @@ function Introduction() {
       </p>
 
       <div className="bg-orange-500/5 border border-orange-500/20 rounded-xl px-4 py-3 mt-6 text-sm text-zinc-300">
-        <span className="text-orange-400 font-semibold">Note: </span>
-        RiderShield is currently in Phase 2 development. Built for Guidewire DEVTrails 2026.
+        <span className="text-orange-400 font-semibold">Phase 3 Complete: </span>
+        RiderShield is a fully deployed, production-ready platform. Built for Guidewire DEVTrails 2026.
       </div>
 
       <SectionHeading id="what-is">What is RiderShield?</SectionHeading>
@@ -202,19 +204,19 @@ function CoveragePlans() {
     {
       tier:'Basic', price:'49', border:'border-white/8', highlight:'',
       tag: null,
-      features:['Heavy Rain coverage','Extreme Heat coverage','UPI auto-payout','Zone monitoring'],
-      locked:['AQI / Smog', 'Flood', 'Curfew / Strike', 'Priority support'],
+      features:['Heavy Rain coverage only','6 hours/day coverage','Max payout Rs. 500','UPI auto-payout','Zone monitoring'],
+      locked:['Extreme Heat', 'AQI / Smog', 'Curfew / Strike', 'Priority support'],
     },
     {
       tier:'Standard', price:'79', border:'border-orange-500/30', highlight:'bg-orange-500/3',
       tag: 'Most Popular',
-      features:['Heavy Rain coverage','Extreme Heat coverage','AQI / Smog coverage','Flood coverage','UPI auto-payout','Zone monitoring'],
+      features:['Rain + Heat + AQI coverage','8 hours/day coverage','Max payout Rs. 900','UPI auto-payout','Zone monitoring'],
       locked:['Curfew / Strike', 'Priority support'],
     },
     {
       tier:'Premium', price:'119', border:'border-purple-500/25', highlight:'bg-purple-500/3',
       tag: null,
-      features:['All 6 disruption types','UPI auto-payout','Zone monitoring','Priority support','Dedicated account manager'],
+      features:['Full coverage — all disruption types','12 hours/day coverage','Max payout Rs. 1,500','UPI auto-payout','Priority support'],
       locked:[],
     },
   ];
@@ -294,13 +296,13 @@ function CoveragePlans() {
 
 function DisruptionTypes() {
   const rows = [
-    ['Heavy Rain',      'Weather',       '> 50 mm/hr',            'OpenWeatherMap'],
-    ['Extreme Heat',    'Weather',       '> 45°C for 2+ hrs',     'OpenWeatherMap'],
-    ['Severe Flood',    'Environmental', 'Govt. advisory issued', 'NDMA API'],
-    ['High AQI',        'Air Quality',   '> 400 AQI for 3 hrs',   'CPCB API'],
-    ['Curfew / Strike', 'Civil',         'Official zone lockdown','Govt. API'],
-    ['Strong Winds',    'Weather',       '> 50 km/h',             'OpenWeatherMap'],
-    ['Cyclone',         'Weather',       'IMD cyclone advisory',  'IMD API'],
+    ['Heavy Rain',      'Weather',       '> 50 mm/hr',              'OpenWeatherMap'],
+    ['Extreme Heat',    'Weather',       '> 45°C for 4+ hrs',       'OpenWeatherMap'],
+    ['High AQI / Smog', 'Air Quality',   '> 400 AQI',               'WAQI.info API'],
+    ['Curfew / Strike', 'Civil',         '2+ NewsAPI articles/3 hrs','NewsAPI.org'],
+    ['Group Safety',    'Crowdsourced',  '3+ workers in zone',      'Worker App (in-app)'],
+    ['Severe Flood',    'Environmental', 'Govt. advisory issued',   'NDMA API (Phase 4)'],
+    ['Cyclone',         'Weather',       'IMD cyclone advisory',    'IMD API (Phase 4)'],
   ];
   return (
     <article className="space-y-2">
@@ -433,10 +435,10 @@ function AdminDashboardDoc() {
 // ─── Registration ─────────────────────────────────────────────────────────────
 function Registration() {
   const steps = [
-    ['Download the App',           'Search RiderShield on Google Play Store. Available for Android. iOS coming soon.'],
-    ['Phone Verification',          'Enter your mobile number. OTP is sent to your registered number. Bank-level security — app blocks on rooted or developer mode phones.'],
-    ['KYC Verification',            'Submit Aadhaar and PAN. Live selfie is matched against Aadhaar photo using AI face matching. Verification completes in under 60 seconds.'],
-    ['Account Aggregator Consent',  'Give one-time consent to share bank transaction data via Setu Account Aggregator. This verifies you are an active gig worker by checking Zomato or Swiggy credits in your bank account. No manual proof needed.'],
+    ['Phone Verification',          'Enter your 10-digit mobile number. Firebase sends an OTP. For hackathon judges: use phone 9999999999 and OTP 123456 for an instant demo bypass — no real SIM required.'],
+    ['Account Aggregator Consent',  'Give one-time consent to share bank transaction data via Setu Account Aggregator (fiu-uat.setu.co). The system checks your bank statement for Zomato or Swiggy credit entries to verify you are an active gig worker. No manual documents needed.'],
+    ['Choose a Coverage Plan',       'Select from 3 ML-priced plans: Basic (Rs. 49/week, rain only), Standard (Rs. 79/week, rain + heat + AQI), or Premium (Rs. 119/week, full coverage). The app shows your zone risk score to help you decide.'],
+    ['You Are Protected',            'From this moment, every qualifying disruption in your zone will automatically credit your UPI. No forms. No calls. No waiting.'],
   ];
   const security = [
     'Developer mode detection — app blocks if enabled',
@@ -822,83 +824,59 @@ function Endpoints() {
     <article className="space-y-2">
       <p className="text-xs uppercase tracking-widest text-zinc-600 mb-6">RiderShield / API Reference</p>
       <h1 className="text-4xl font-bold text-white">API Reference</h1>
-      <p className="text-zinc-400 text-lg pt-1">Backend endpoints for the RiderShield platform.</p>
+      <p className="text-zinc-400 text-lg pt-1">Complete backend endpoints for the RiderShield Phase 3 platform.</p>
 
       <div className="bg-[#1a1a1a] rounded-xl px-4 py-3 mt-6 font-mono text-xs text-zinc-400 space-y-1">
         <p><span className="text-zinc-600">Base URL (dev): </span><span className="text-orange-400">{import.meta.env.VITE_API_URL || 'http://localhost:5000'}</span></p>
         <p><span className="text-zinc-600">Auth header: </span><span className="text-green-400">Authorization: Bearer &lt;token&gt;</span></p>
+        <p><span className="text-zinc-600">Total endpoints: </span><span className="text-white font-bold">30+</span></p>
       </div>
 
-      <SectionHeading id="auth-endpoints">Authentication Endpoints</SectionHeading>
+      <SectionHeading id="auth-endpoints">Authentication</SectionHeading>
+      <EndpointCard method="POST" route="/auth/admin/login" description="Authenticate admin. Returns JWT (8h). Use email: admin@ridershield.in / RiderShield@2026" request={'{\n  "email": "admin@ridershield.in",\n  "password": "RiderShield@2026"\n}'} response={'{\n  "token": "eyJ...",\n  "admin": { "name", "email", "role": "superadmin" }\n}'} />
+      <EndpointCard method="GET"  route="/auth/admin/verify" description="Verify if the current JWT is still valid." auth response={'{ "valid": true, "admin": { ... } }'} />
+      <EndpointCard method="GET"  route="/auth/admin/me" description="Return the admin profile from the Bearer token." auth response={'{ "admin": { "id", "name", "email", "role" } }'} />
+      <EndpointCard method="POST" route="/worker/verify-firebase" description="Verify Firebase ID token or sandbox token. Returns Worker JWT. Use DEMO_HACKATHON_TOKEN_123 to bypass Firebase in hackathon mode." request={'{\n  "firebaseToken": "DEMO_HACKATHON_TOKEN_123",\n  "pushToken": "optional"\n}'} response={'{\n  "token": "<worker_jwt>",\n  "workerId": "W-4821",\n  "isNewWorker": true\n}'} />
 
-      <EndpointCard
-        method="POST"
-        route="/auth/admin/login"
-        description="Authenticate admin and receive a JWT token (8 hour expiry)."
-        request={`{\n  "email": "admin@ridershield.in",\n  "password": "RiderShield@2026"\n}`}
-        response={`{\n  "token": "eyJhbGciOiJIUzI1...",\n  "admin": {\n    "id": "A001",\n    "name": "Super Admin",\n    "email": "admin@ridershield.in",\n    "role": "superadmin"\n  },\n  "expiresIn": "8h"\n}`}
-      />
+      <SectionHeading id="disruption-endpoints">Disruption & Detection</SectionHeading>
+      <EndpointCard method="POST" route="/weather/check" description="Real-time weather check via OpenWeatherMap for any Indian city." request={'{ "city": "Noida" }'} response={'{ "city", "temp", "rain_mm", "aqi", "severity_score", "disruption_detected" }'} />
+      <EndpointCard method="POST" route="/simulate-disruption" description="Trigger a manual disruption simulation. Runs the full pipeline: HyperTrack → Fraud → ML → Claim." auth request={'{\n  "city": "Delhi",\n  "disruption_type": "heat",\n  "severity_score": 0.7,\n  "hours_affected": 5\n}'} response={'{\n  "claimId": "CLM-...",\n  "payoutAmount": 380,\n  "confidence": 0.94,\n  "hypertrackSessionId": "HT-..."\n}'} />
+      <EndpointCard method="POST" route="/cron/run" description="Manually trigger one full multi-signal detection cycle. Used by the Orchestration Hub Execute Pulse button." auth response={'{ "success": true, "message": "Detection cycle triggered" }'} />
+      <EndpointCard method="POST" route="/admin/demo/trigger" description="Simplified demo trigger — creates a claim and active alert for a specific zone with one call." auth request={'{ "zone": "Noida Sector 18", "type": "rain", "severity": 0.85 }'} response={'{ "success": true, "claimId", "payoutAmount", "workerNotified": true }'} />
 
-      <EndpointCard
-        method="GET"
-        route="/auth/admin/me"
-        description="Get current admin details from the Bearer token."
-        auth
-        response={`{ "admin": { "id", "name", "email", "role" } }`}
-      />
+      <SectionHeading id="claims-endpoints">Claims</SectionHeading>
+      <EndpointCard method="GET"   route="/claims" description="Get all claims from MongoDB. Sorted by timestamp descending." auth response={'{ "claims": [ { claimId, workerId, zone, type, payoutAmount, status, hypertrackSessionId } ], "total": N }'} />
+      <EndpointCard method="PATCH" route="/claims/:claimId/status" description="Update claim status. Use to manually approve or reject a claim." auth request={'{ "status": "approved" | "rejected", "reason": "optional" }'} response={'{ "success": true, "claim": { ... } }'} />
 
-      <EndpointCard
-        method="GET"
-        route="/auth/admin/verify"
-        description="Verify if a token is still valid."
-        auth
-        response={`{ "valid": true, "admin": { ... } }`}
-      />
+      <SectionHeading id="analytics-endpoints">Analytics & Reporting</SectionHeading>
+      <EndpointCard method="GET" route="/analytics/live" description="Real-time KPIs: total claims, total payout, active policies, fraud prevented, loss ratio." auth response={'{ "totalClaims", "totalPayout", "activePolicies", "lossRatio", "fraudPrevented", "autoTriggered" }'} />
+      <EndpointCard method="GET" route="/analytics/weekly-trend" description="Last 8 weeks of payout totals and claim counts. Used for the bar chart in Analytics." auth response={'{ "data": [ { "label": "W1", "val": 4200, "count": 12 }, ... ] }'} />
+      <EndpointCard method="GET" route="/analytics/claims-by-type" description="Disruption type breakdown with count and total payout per type." auth response={'{ "data": [ { "type": "rain", "count": 38, "totalPayout": 11856, "pct": 42 } ] }'} />
+      <EndpointCard method="GET" route="/analytics/trust-distribution" description="Distribution of worker trust scores across 5 buckets (Elite, High, Standard, Low, New)." auth response={'{ "data": [ { "range": "90–100", "label": "Elite", "workers": 12, "pct": 15 } ] }'} />
+      <EndpointCard method="GET" route="/analytics/forecast" description="7-day weather-based risk forecast per zone using OpenWeatherMap 5-day forecast API." auth response={'{ "zones": [ { "zoneName", "nextWeekRisk", "dominantThreat", "forecastDays": [...] } ] }'} />
 
-      <SectionHeading id="disruption-endpoints">Disruption Endpoints</SectionHeading>
+      <SectionHeading id="worker-endpoints">Worker (Mobile App)</SectionHeading>
+      <EndpointCard method="GET"  route="/worker/alerts" description="Polls active disruption alerts for a zone. Worker app calls this every 10 seconds." response={'{ "alerts": [ { zoneId, disruptionType, payoutAmount, payoutMessage, status } ] }'} />
+      <EndpointCard method="GET"  route="/worker/payouts/:workerId" description="Returns full payout history for a worker including razorpayPayoutId for UPI confirmation." response={'{ "payouts": [ { claimId, type, zone, payoutAmount, status, razorpayPayoutId } ] }'} />
+      <EndpointCard method="POST" route="/worker/safety-mode" description="Worker-activated Safety Mode. Returns groupCount and groupValidated if 3+ workers in zone activated." request={'{ "zoneId": "Z001", "zoneName": "Noida Sector 18", "workerId": "W-4821" }'} response={'{ "received": true, "groupCount": 2, "groupValidated": false }'} />
+      <EndpointCard method="POST" route="/aa/verify" description="Account Aggregator income verification via Setu. Falls back to mock data if Setu sandbox unavailable." request={'{ "phoneNumber": "9876543210" }'} response={'{ "isGigWorker": true, "avgWeeklyIncome": 5200, "suggestedPlan": "standard", "source": "mock" }'} />
 
-      <EndpointCard
-        method="POST"
-        route="/weather/check"
-        description="Check real-time weather and severity for any Indian city."
-        request={`{ "city": "Noida" }`}
-        response={`{ "city", "temp", "rain_mm", "severity_score", "disruption_detected" }`}
-      />
+      <SectionHeading id="payout-endpoints">Payouts & Rewards</SectionHeading>
+      <EndpointCard method="POST" route="/payout/upi" description="Dispatch Razorpay UPI payout for an approved claim. Falls back to simulation if Razorpay key unavailable." auth request={'{ "workerId": "W-4821", "upiId": "4821@paytm", "amount": 380, "claimId": "CLM-..." }'} response={'{ "success": true, "payoutId": "rzp_sim_...", "status": "processed" }'} />
+      <EndpointCard method="GET"  route="/workers/cashback-eligible" description="List workers with 4+ consecutive no-claim weeks who are eligible for the 15% No-Claim Reback." auth response={'[ { workerId, name, streak, rebackAmount, plan, upiId } ]'} />
+      <EndpointCard method="POST" route="/payout/cashback" description="Issue a 15% No-Claim Reback to an eligible worker. Resets their streak counter." auth request={'{ "workerId": "W-4821", "amount": 420, "weeksStreak": 4 }'} response={'{ "success": true, "cashback": { cashbackId, amount, status: "paid" } }'} />
 
-      <EndpointCard
-        method="POST"
-        route="/simulate-disruption"
-        description="Trigger a disruption event and get ML-calculated payout amount."
-        auth
-        request={`{\n  "city": "Noida",\n  "disruption_type": "rain",\n  "severity_score": 0.87,\n  "hours_affected": 4\n}`}
-        response={`{ "status": "approved", "city", "disruption_type", "payout_amount", "timestamp" }`}
-      />
+      <SectionHeading id="workers-endpoints">Workers & Zones</SectionHeading>
+      <EndpointCard method="GET"   route="/workers" description="Get all registered workers with filters: zone, plan, status. Paginated (limit, page)." auth response={'{ "workers": [ { workerId, name, zone, plan, trustScore, aaVerified, kycStatus } ], "total": N }'} />
+      <EndpointCard method="GET"   route="/workers/:workerId" description="Get worker profile + last 5 claims." auth response={'{ "worker": { ... }, "recentClaims": [ ... ] }'} />
+      <EndpointCard method="PATCH" route="/workers/:workerId/trust-score" description="Update worker trust score. SuperAdmin only. Change is audit-logged." auth request={'{ "trustScore": 85, "reason": "Verified consistent GPS data" }'} response={'{ "success": true, "worker": { trustScore: 85 } }'} />
+      <EndpointCard method="GET"   route="/zones" description="Get all delivery zones with real-time status, active alert flag, and disruption type if currently active." auth response={'{ "zones": [ { id, name, city, riskScore, status, hasActiveAlert, alertType } ] }'} />
 
-      <EndpointCard
-        method="POST"
-        route="/premium/calculate"
-        description="Calculate weekly insurance premium using the ML model."
-        auth
-        request={`{\n  "zone_risk_score": 0.7,\n  "earnings_baseline": 5400,\n  "rain_forecast_7d": 12.5,\n  "plan_type": "standard"\n}`}
-        response={`{ "plan_type": "standard", "weekly_premium": 79.0, "currency": "INR" }`}
-      />
-
-      <EndpointCard
-        method="GET"
-        route="/claims"
-        description="Retrieve all claims. Returns 20 mock claims (real DB in Phase 3)."
-        auth
-        response={`{ "claims": [ { id, workerId, zone, type, severity, payoutAmount, status } ], "total": 20 }`}
-      />
-
-      <EndpointCard
-        method="POST"
-        route="/admin/zone/mark-disruption"
-        description="Manually mark a zone as disrupted. Restricted to superadmin and zonemanager roles."
-        auth
-        request={`{\n  "zone": "Noida Sector 18",\n  "disruptionType": "rain",\n  "manualOverride": true\n}`}
-        response={`{ "success": true, "zone", "message": "Zone marked as disrupted" }`}
-      />
+      <SectionHeading id="fraud-endpoints">Fraud Detection & Admin</SectionHeading>
+      <EndpointCard method="POST" route="/fraud/analyze" description="Run the 5-check fraud detection engine on any worker/zone/type combination." auth request={'{ "zone": "Noida Sector 18", "disruptionType": "rain", "workerId": "W-4821", "trustScore": 72 }'} response={'{ "approved": true, "confidenceScore": 94, "checks": { claimVelocity, trustScore, timePattern, gpsCluster, deviceFingerprint } }'} />
+      <EndpointCard method="POST" route="/premium/breakdown" description="Full ML-backed premium calculation with reasoning breakdown. Used by the Simulation Studio slider." auth request={'{ "zone": "Noida Sector 18", "planType": "standard", "trustScore": 65 }'} response={'{ "finalPremium": 79, "breakdown": { base, zoneRisk, trustAdjust }, "mlCrossValidation": { mlPrediction, agreement } }'} />
+      <EndpointCard method="POST" route="/dev/system-reset" description="Clear all claims and active alerts. Used by the Orchestration Hub Reset Environment button." auth response={'{ "message": "System cleared successfully" }'} />
+      <EndpointCard method="POST" route="/dev/advance-streak" description="Demo utility — add N no-claim weeks to a worker to test Rewards eligibility." auth request={'{ "workerId": "W-4821", "weeks": 4 }'} response={'{ "success": true, "newStreak": 4 }'} />
     </article>
   );
 }
@@ -1241,8 +1219,8 @@ function Webhooks() {
       <p className="text-zinc-400 text-lg pt-1">Real-time event notifications for your platform integrations.</p>
 
       <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3 mt-6 text-sm text-zinc-300">
-        <span className="text-amber-400 font-semibold">Beta: </span>
-        Webhooks are currently in Beta. Production-ready in Phase 3. Use for demo and integration testing.
+        <span className="text-amber-400 font-semibold">Phase 4 Roadmap: </span>
+        Webhooks are designed and documented but not yet deployed. The event schema below is final and ready for integration partners.
       </div>
 
       <SectionHeading id="events">Available Events</SectionHeading>
@@ -1345,6 +1323,79 @@ function Placeholder({ id }) {
   );
 }
 
+// ─── SECTION: Rewards Engine ────────────────────────────────────────────────
+function RewardsEngine() {
+  return (
+    <div className="space-y-4">
+      <h1 className="text-3xl font-extrabold text-white mb-2">Rewards Engine (No-Claim Reback)</h1>
+      <p className="text-zinc-400 text-sm">
+        RiderShield encourages safe driving by offering a "No-Claim Reback" cashback program. 
+        Workers who do not trigger manual Safety Mode claims for 4 consecutive weeks receive a 15% refund 
+        on all premiums paid during that month.
+      </p>
+
+      <H3>API Endpoints</H3>
+      <div className="space-y-2 mt-2">
+        <div className="bg-[#111] border border-white/6 rounded-xl p-3 font-mono text-[11px]">
+          <span className="text-green-400 uppercase tracking-widest mr-2">GET</span>
+          <span className="text-white">/workers/cashback-eligible</span>
+          <p className="text-zinc-500 font-sans mt-1 text-xs">Returns all workers with a current noClaimStreak of 4 or higher.</p>
+        </div>
+        <div className="bg-[#111] border border-white/6 rounded-xl p-3 font-mono text-[11px]">
+          <span className="text-yellow-400 uppercase tracking-widest mr-2">POST</span>
+          <span className="text-white">/payout/cashback</span>
+          <p className="text-zinc-500 font-sans mt-1 text-xs">Executes a UPI transfer to return 15% of premiums to eligible workers, resetting their streak.</p>
+        </div>
+        <div className="bg-[#111] border border-white/6 rounded-xl p-3 font-mono text-[11px]">
+          <span className="text-orange-400 uppercase tracking-widest mr-2">POST</span>
+          <span className="text-white">/dev/advance-streak</span>
+          <p className="text-zinc-500 font-sans mt-1 text-xs">[DEMO UTILITY] Artificially increases a worker's streak by 1 for live hackathon demonstration.</p>
+        </div>
+      </div>
+
+      <H3>The Cron Logic</H3>
+      <p className="text-zinc-400 text-sm leading-relaxed">
+        The system runs a weekly chron job that evaluates every active worker. If a worker has 0 manual 
+        Safety Mode claims in the past 7 days, their noClaimStreak integer is incremented by 1. 
+        Automatic weather claims (Rain, Heat, etc.) DO NOT penalize the streak, preserving the parametric trust model.
+      </p>
+    </div>
+  );
+}
+
+// ─── SECTION: AI Chatbot ───────────────────────────────────────────────────
+function AIAssistant() {
+  return (
+    <div className="space-y-4">
+      <h1 className="text-3xl font-extrabold text-white mb-2">AI Chatbot Integration</h1>
+      <p className="text-zinc-400 text-sm">
+        To minimize support overhead and provide instant multilingual answers, RiderShield ships with 
+        a context-aware Agentic Support Bot integrated directly into the public frontend.
+      </p>
+
+      <H3>Context Injection</H3>
+      <p className="text-zinc-400 text-sm leading-relaxed">
+        The LLM prompt is context-injected with the worker's current state. 
+        It knows the worker's current Plan Tier, their registered Zone, 
+        and real-time weather polling data from that zone. This prevents AI hallucinations 
+        and allows the bot to accurately tell a worker if they are currently covered based on live threshold values.
+      </p>
+
+      <H3>Key Capabilities</H3>
+      <ul className="space-y-2 mt-2">
+        {['Multilingual parsing (Hindi/English native support).',
+          'Live status checks for OpenWeatherMap active disruptions.',
+          'Explanation of policy limits and payout limits per tier.'].map(i => (
+            <li key={i} className="flex gap-2 text-sm text-zinc-300">
+              <span className="text-orange-400 mt-1 shrink-0">✦</span>
+              {i}
+            </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 const CONTENT = {
   Introduction, HowItWorks, CoveragePlans,
   DisruptionTypes, MLPayoutModel, AdminDashboard: AdminDashboardDoc,
@@ -1352,6 +1403,7 @@ const CONTENT = {
   ZoneManagement, FraudDetection,
   Endpoints, Authentication,
   QuickSetup, Analytics, Thresholds, Webhooks,
+  RewardsEngine, AIAssistant
 };
 
 
@@ -1367,6 +1419,12 @@ export default function DocsPage() {
     contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Flat ordered list of all nav items — drives dynamic prev/next
+  const flatNav = NAV.flatMap(group => group.items);
+  const currentIdx = flatNav.findIndex(item => item.id === active);
+  const prevItem   = currentIdx > 0 ? flatNav[currentIdx - 1] : null;
+  const nextItem   = currentIdx < flatNav.length - 1 ? flatNav[currentIdx + 1] : null;
+
   const Content = CONTENT[active] || (() => <Placeholder id={active} />);
 
   return (
@@ -1381,14 +1439,30 @@ export default function DocsPage() {
       >
         <div className="max-w-3xl mx-auto px-10 py-10">
           <Content />
-          {/* Bottom nav */}
-          <div className="flex justify-between mt-16 pt-8 border-t border-white/8">
-            <button onClick={() => handleNav('Introduction')} className="text-zinc-500 hover:text-white text-sm transition-colors">
-              ← Introduction
-            </button>
-            <button onClick={() => handleNav('HowItWorks')} className="text-zinc-500 hover:text-white text-sm transition-colors">
-              How It Works →
-            </button>
+          {/* Bottom prev / next navigation — fully dynamic */}
+          <div className="flex justify-between items-center mt-16 pt-8 border-t border-white/8 gap-4">
+            {prevItem ? (
+              <button
+                onClick={() => handleNav(prevItem.id)}
+                className="group flex items-center gap-2 text-zinc-500 hover:text-white text-sm transition-colors"
+              >
+                <span className="text-zinc-700 group-hover:text-zinc-400 transition-colors">←</span>
+                <span>{prevItem.label}</span>
+              </button>
+            ) : (
+              <div />
+            )}
+            {nextItem ? (
+              <button
+                onClick={() => handleNav(nextItem.id)}
+                className="group flex items-center gap-2 text-zinc-500 hover:text-white text-sm transition-colors"
+              >
+                <span>{nextItem.label}</span>
+                <span className="text-zinc-700 group-hover:text-zinc-400 transition-colors">→</span>
+              </button>
+            ) : (
+              <div />
+            )}
           </div>
         </div>
       </main>

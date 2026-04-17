@@ -10,6 +10,7 @@ import {
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
+import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import {
   initHyperTrack,
@@ -59,6 +60,17 @@ export default function HomeScreen() {
   const [zone, setZone] = useState('Noida Sector 18');
   const [inZone, setInZone] = useState(true);
   const [gpsTrackingActive, setGpsTrackingActive] = useState(false);
+  const [recentPayouts, setRecentPayouts] = useState<any[]>([]);
+  const router = useRouter();
+
+  const fetchPayouts = () => {
+    if (!workerId) return;
+    fetch(`${BACKEND_URL}/worker/payouts/${workerId}`)
+      .then(r => r.json())
+      .then(d => { if (d.payouts) setRecentPayouts(d.payouts.slice(0, 3)); })
+      .catch(() => {});
+  };
+  useEffect(() => { fetchPayouts(); }, [workerId]);
 
   const checkZone = (coords: { latitude: number, longitude: number }) => {
     const match = findZoneFromCoords(coords.latitude, coords.longitude);
@@ -134,8 +146,14 @@ export default function HomeScreen() {
         }
         if (finalStatus !== 'granted') return;
 
+        // Catch Expo Go removal of push notifications
+        if (Constants.appOwnership === 'expo') {
+          console.log('[Safe Mode] Skipping push notifications registry in Expo Go');
+          return;
+        }
+
         const tokenData = await Notifications.getExpoPushTokenAsync({
-          projectId: Constants.expoConfig?.extra?.eas?.projectId,
+          projectId: Constants.expoConfig?.extra?.eas?.projectId || 'ridershield-hackathon-demo',
         });
         const pushToken = tokenData.data;
         await fetch(`${BACKEND_URL}/worker/push-token`, {
@@ -200,6 +218,7 @@ export default function HomeScreen() {
         if (data.alerts && data.alerts.length > 0) {
           showAlert(data.alerts[0]);
           lastCheckedRef.current = new Date().toISOString();
+          fetchPayouts(); // refresh payouts immediately
         }
       } catch {}
     };
@@ -272,6 +291,20 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
+        <TouchableOpacity 
+          onPress={() => router.push('/docs')}
+          style={{ backgroundColor: 'rgba(59,130,246,0.1)', marginHorizontal: 24, marginBottom: 24, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(59,130,246,0.3)', flexDirection: 'row', alignItems: 'center' }}
+          activeOpacity={0.8}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: '#60a5fa', fontSize: 14, fontWeight: '800', marginBottom: 4 }}>Hackathon Demo Info</Text>
+            <Text style={{ color: '#93c5fd', fontSize: 13, lineHeight: 20 }}>
+              Want to understand the app? Open the Guide section to learn how to evaluate features and trigger payouts.
+            </Text>
+          </View>
+          <ChevronRight color="#60a5fa" size={20} style={{ marginLeft: 12 }} />
+        </TouchableOpacity>
+
         <View style={s.zoneCard}>
           <MapPin color={inZone ? C.green : C.orange} size={28} />
           <View style={s.zoneMeta}>
@@ -310,32 +343,43 @@ export default function HomeScreen() {
 
         <View style={s.sectionHeader}>
           <Text style={s.sectionTitle}>Recent Payouts</Text>
-          <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity onPress={() => router.push('/earnings')} style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Text style={s.seeAll}>See all</Text>
             <ChevronRight color={C.orange} size={14} />
           </TouchableOpacity>
         </View>
 
-        {[
-          { Icon: CloudRain,   iconBg: 'rgba(59,130,246,0.15)', iconColor: C.blue,   type: 'Heavy Rain',   date: '28 Mar 2026', amount: 'Rs. 245' },
-          { Icon: Thermometer, iconBg: 'rgba(249,115,22,0.15)', iconColor: C.orange, type: 'Extreme Heat', date: '21 Mar 2026', amount: 'Rs. 180' },
-          { Icon: Wind,        iconBg: 'rgba(156,163,175,0.15)',iconColor: C.gray,   type: 'High AQI',     date: '14 Mar 2026', amount: 'Rs. 210' },
-        ].map(({ Icon, iconBg, iconColor, type, date, amount }, i) => (
-          <View key={i} style={s.payoutRow}>
-            <View style={s.payoutLeft}>
-              <View style={[s.payoutIconBox, { backgroundColor: iconBg }]}><Icon color={iconColor} size={18} /></View>
-              <View style={s.payoutMeta}>
-                <Text style={s.payoutType}>{type}</Text>
-                <Text style={s.payoutDate}>{date}</Text>
+        {recentPayouts.length > 0 ? (
+          recentPayouts.map((p, i) => {
+            let IconComp = Shield;
+            let iconColor = C.gray;
+            let iconBg = 'rgba(156,163,175,0.15)';
+            if (p.type === 'rain' || p.type === 'flood') { IconComp = CloudRain; iconColor = C.blue; iconBg = 'rgba(59,130,246,0.15)'; }
+            else if (p.type === 'heat' || p.type === 'curfew') { IconComp = Thermometer; iconColor = C.orange; iconBg = 'rgba(249,115,22,0.15)'; }
+            else if (p.type === 'smog') { IconComp = Wind; iconColor = C.gray; iconBg = 'rgba(156,163,175,0.15)'; }
+
+            const date = p.timestamp ? new Date(p.timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—';
+            
+            return (
+              <View key={i} style={s.payoutRow}>
+                <View style={s.payoutLeft}>
+                  <View style={[s.payoutIconBox, { backgroundColor: iconBg }]}><IconComp color={iconColor} size={18} /></View>
+                  <View style={s.payoutMeta}>
+                    <Text style={s.payoutType}>{p.type} disruption</Text>
+                    <Text style={s.payoutDate}>{date} · {p.zone}</Text>
+                  </View>
+                </View>
+                <Text style={s.payoutAmount}>+Rs. {Math.round(p.payoutAmount)}</Text>
               </View>
-            </View>
-            <Text style={s.payoutAmount}>{amount}</Text>
-          </View>
-        ))}
+            );
+          })
+        ) : (
+          <Text style={{ color: C.darkGray, marginHorizontal: 16, marginBottom: 8 }}>No payouts yet.</Text>
+        )}
 
         <Text style={s.autoNote}>All payouts credited automatically — 0 claims filed</Text>
 
-        <TouchableOpacity style={s.safetyBtn} activeOpacity={0.85}>
+        <TouchableOpacity onPress={() => router.push('/safety')} style={s.safetyBtn} activeOpacity={0.85}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Shield color={C.white} size={24} />
             <View style={s.safetyMeta}>
