@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "645880267407",
+    "project_id": "ridershield-guidewire",
+    "storage_bucket": "ridershield-guidewire.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:645880267407:android:9e9915a8eb09be6f7926fa",
+        "android_client_info": {
+          "package_name": "com.aadiexii.workerapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "645880267407-gu795eknn83jk8ej0js6nr0vkfsdct7o.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCn5oYmUUcoLxYk4CPgXdbP6Q6e6a0j8iA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "645880267407-gu795eknn83jk8ej0js6nr0vkfsdct7o.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
